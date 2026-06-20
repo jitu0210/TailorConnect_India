@@ -4,12 +4,14 @@ import { useAuth } from '../contexts/AuthContext'
 import Button from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
 
-export default function RegisterPage() {
+export default function RegisterPage({ role = 'customer' }) {
   const { register } = useAuth()
   const navigate = useNavigate()
   const [form, setForm] = useState({ fullName: '', email: '', mobile: '', password: '', confirmPassword: '' })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+
+  const isTailor = role === 'tailor'
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -17,8 +19,8 @@ export default function RegisterPage() {
     if (form.password !== form.confirmPassword) return setError('Passwords do not match')
     setLoading(true)
     try {
-      await register({ fullName: form.fullName, email: form.email, mobile: form.mobile, password: form.password, role: 'customer' })
-      navigate('/')
+      await register({ fullName: form.fullName, email: form.email, mobile: form.mobile, password: form.password, role })
+      navigate(isTailor ? '/dashboard/tailor' : '/')
     } catch (err) {
       setError(err.message)
     } finally {
@@ -32,8 +34,12 @@ export default function RegisterPage() {
     <div className="min-h-screen bg-paper-50 flex items-center justify-center px-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="font-d text-4xl text-ink-900 mb-2">Create account</h1>
-          <p className="font-t text-ink-500 italic">Find and save your favourite tailors</p>
+          <h1 className="font-d text-4xl text-ink-900 mb-2">
+            {isTailor ? 'List your shop' : 'Create account'}
+          </h1>
+          <p className="font-t text-ink-500 italic">
+            {isTailor ? 'Open your digital storefront on TailorConnect' : 'Find and save your favourite tailors'}
+          </p>
         </div>
 
         <div className="bg-paper-0 border border-ink-200 rounded-md p-8">

@@ -75,4 +75,5 @@ export const adminApi = {
   toggleTopRated: (id, token) => req(`/admin/tailors/${id}/top-rated`, { method: 'PATCH' }, token),
   reviews: (params, token) => req(`/admin/reviews?${new URLSearchParams(params)}`, {}, token),
   deleteReview: (id, token) => req(`/admin/reviews/${id}`, { method: 'DELETE' }, token),
+  subscriptions: (params, token) => req(`/admin/subscriptions?${new URLSearchParams(params)}`, {}, token),
 }

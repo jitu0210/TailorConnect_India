@@ -5,7 +5,7 @@ import Button from '../components/ui/Button'
 import Tag from '../components/ui/Tag'
 import RatingStars from '../components/ui/RatingStars'
 import Avatar from '../components/ui/Avatar'
-import { tailorsApi, reviewsApi } from '../lib/api'
+import { tailorsApi } from '../lib/api'
 
 export default function TailorPage() {
   const { id } = useParams()
@@ -20,7 +20,7 @@ export default function TailorPage() {
       try {
         const [t, r] = await Promise.all([
           tailorsApi.getById(id),
-          reviewsApi.getForTailor(id),
+          tailorsApi.getReviews(id),
         ])
         setTailor(t)
         setReviews(r)
