@@ -3,7 +3,7 @@ import mongoose from 'mongoose'
 const subscriptionSchema = new mongoose.Schema(
   {
     tailor: { type: mongoose.Schema.Types.ObjectId, ref: 'Tailor', required: true },
-    plan: { type: String, enum: ['free', 'premium'], default: 'free' },
+    plan: { type: String, enum: ['monthly', 'semiannual', 'annual'], required: true },
     razorpayOrderId: { type: String },
     razorpayPaymentId: { type: String },
     razorpaySignature: { type: String },

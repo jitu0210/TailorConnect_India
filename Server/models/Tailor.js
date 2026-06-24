@@ -16,8 +16,8 @@ const tailorSchema = new mongoose.Schema(
     shopName: { type: String, required: true, trim: true },
     ownerName: { type: String, required: true, trim: true },
     whatsapp: { type: String, required: true, trim: true },
-    mobile: { type: String, trim: true },
-    email: { type: String, trim: true, lowercase: true },
+    mobile: { type: String, required: true, trim: true },
+    email: { type: String, required: true, trim: true, lowercase: true },
 
     address: { type: String, trim: true },
     city: { type: String, required: true, trim: true },
@@ -43,7 +43,12 @@ const tailorSchema = new mongoose.Schema(
     isActive: { type: Boolean, default: true },
     status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
 
+    isEarlyBird: { type: Boolean, default: false },
+    freeTrialEnds: { type: Date },
+    trialReminderSent: { type: Boolean, default: false },
+
     subscriptionType: { type: String, enum: ['free', 'premium'], default: 'free' },
+    subscriptionPlan: { type: String, enum: ['monthly', 'semiannual', 'annual'] },
     subscriptionExpiry: { type: Date },
 
     rating: { type: Number, default: 0, min: 0, max: 5 },

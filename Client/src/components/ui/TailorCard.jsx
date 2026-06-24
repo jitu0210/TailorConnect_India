@@ -42,7 +42,11 @@ export default function TailorCard({ tailor }) {
   } = tailor
 
   const whatsappUrl = whatsapp
-    ? `https://wa.me/91${whatsapp.replace(/\D/g, '')}`
+    ? (() => {
+        const digits = whatsapp.replace(/\D/g, '')
+        const e164 = digits.startsWith('91') && digits.length > 10 ? digits : `91${digits}`
+        return `https://wa.me/${e164}`
+      })()
     : null
 
   return (

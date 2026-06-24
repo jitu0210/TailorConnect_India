@@ -1,6 +1,62 @@
 import { useState } from 'react'
-import { Link, NavLink } from 'react-router-dom'
+import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
+
+const ROLE_LABEL = { tailor: 'Tailor', customer: 'Customer', admin: 'Admin' }
+
+function UserChip({ user, onSignOut }) {
+  const navigate = useNavigate()
+  const displayName =
+    user.role === 'tailor' && user.tailorProfile?.shopName
+      ? user.tailorProfile.shopName
+      : user.fullName || user.email
+
+  const initials = displayName
+    .split(' ')
+    .slice(0, 2)
+    .map(w => w[0]?.toUpperCase())
+    .join('')
+
+  return (
+    <div className="flex items-center gap-2">
+      {/* Avatar — click goes to profile */}
+      <button
+        type="button"
+        onClick={() => navigate('/profile')}
+        className="w-7 h-7 rounded-full bg-ink-900 border border-ink-700 flex items-center justify-center flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity duration-base"
+        title="View profile"
+      >
+        <span className="font-ui font-semibold text-[9px] text-paper-50 leading-none">
+          {initials}
+        </span>
+      </button>
+
+      {/* Name + role — click goes to profile */}
+      <button
+        type="button"
+        onClick={() => navigate('/profile')}
+        className="hidden md:block leading-none text-left cursor-pointer hover:opacity-70 transition-opacity duration-base"
+        title="View profile"
+      >
+        <p className="font-ui font-semibold text-[11px] text-ink-900 truncate max-w-[120px]">
+          {displayName}
+        </p>
+        <p className="font-ui text-[9px] uppercase tracking-wide-xs text-ink-400">
+          {ROLE_LABEL[user.role] || user.role}
+        </p>
+      </button>
+
+      <div className="w-px h-4 bg-ink-200 mx-0.5 hidden md:block" />
+
+      <button
+        onClick={onSignOut}
+        className="font-ui font-semibold text-[11px] uppercase tracking-wide-xs px-2.5 py-1.5 rounded-sm text-ink-400 hover:text-ink-900 transition-colors duration-base cursor-pointer"
+      >
+        Sign out
+      </button>
+    </div>
+  )
+}
 
 export default function Navbar() {
   const { user, logout } = useAuth()
@@ -8,10 +64,22 @@ export default function Navbar() {
 
   const navLinks =
     user?.role === 'admin'
-      ? [{ to: '/', label: 'Find Tailors' }, { to: '/admin', label: 'Admin' }]
+      ? [
+          { to: '/', label: 'Find Tailors' },
+          { to: '/top-rated', label: 'Top Rated' },
+          { to: '/admin', label: 'Admin' },
+        ]
       : user?.role === 'tailor'
-      ? [{ to: '/', label: 'Find Tailors' }, { to: '/dashboard/tailor', label: 'My Shop' }]
-      : [{ to: '/', label: 'Find Tailors' }, { to: '/register/tailor', label: 'List Your Shop' }]
+      ? [
+          { to: '/', label: 'Find Tailors' },
+          { to: '/top-rated', label: 'Top Rated' },
+          { to: '/dashboard/tailor', label: 'My Shop' },
+        ]
+      : [
+          { to: '/', label: 'Find Tailors' },
+          { to: '/top-rated', label: 'Top Rated' },
+          { to: '/register/tailor', label: 'List Your Shop' },
+        ]
 
   const desktopLinkClass = ({ isActive }) =>
     [
@@ -26,6 +94,11 @@ export default function Navbar() {
       'transition-colors duration-base',
       isActive ? 'text-paper-50 bg-ink-900' : 'text-ink-600 hover:text-ink-900 hover:bg-ink-100',
     ].join(' ')
+
+  const mobileDisplayName =
+    user?.role === 'tailor' && user?.tailorProfile?.shopName
+      ? user.tailorProfile.shopName
+      : user?.fullName || user?.email || ''
 
   return (
     <header className="sticky top-0 z-50 bg-paper-50/95 backdrop-blur-md border-b border-ink-200">
@@ -62,12 +135,7 @@ export default function Navbar() {
           <div className="w-px h-4 bg-ink-200 mx-1.5" />
 
           {user ? (
-            <button
-              onClick={logout}
-              className="font-ui font-semibold text-[11px] uppercase tracking-wide-xs px-3 py-1.5 rounded-sm text-ink-400 hover:text-ink-900 transition-colors duration-base cursor-pointer"
-            >
-              Sign out
-            </button>
+            <UserChip user={user} onSignOut={logout} />
           ) : (
             <NavLink
               to="/login"
@@ -88,43 +156,17 @@ export default function Navbar() {
           onClick={() => setMobileOpen(v => !v)}
           aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
         >
-          <span
-            className={[
-              'block h-[1.5px] bg-ink-900 transition-all duration-base origin-center',
-              mobileOpen ? 'rotate-45 translate-y-[6.5px] w-5' : 'w-5',
-            ].join(' ')}
-          />
-          <span
-            className={[
-              'block h-[1.5px] bg-ink-900 transition-all duration-fast w-5',
-              mobileOpen ? 'opacity-0 scale-x-0' : '',
-            ].join(' ')}
-          />
-          <span
-            className={[
-              'block h-[1.5px] bg-ink-900 transition-all duration-base origin-center',
-              mobileOpen ? '-rotate-45 -translate-y-[6.5px] w-5' : 'w-4',
-            ].join(' ')}
-          />
+          <span className={['block h-[1.5px] bg-ink-900 transition-all duration-base origin-center', mobileOpen ? 'rotate-45 translate-y-[6.5px] w-5' : 'w-5'].join(' ')} />
+          <span className={['block h-[1.5px] bg-ink-900 transition-all duration-fast w-5', mobileOpen ? 'opacity-0 scale-x-0' : ''].join(' ')} />
+          <span className={['block h-[1.5px] bg-ink-900 transition-all duration-base origin-center', mobileOpen ? '-rotate-45 -translate-y-[6.5px] w-5' : 'w-4'].join(' ')} />
         </button>
       </div>
 
       {/* Mobile dropdown */}
-      <div
-        className={[
-          'sm:hidden border-t border-ink-200 bg-paper-50 overflow-hidden transition-all duration-base',
-          mobileOpen ? 'max-h-64 opacity-100' : 'max-h-0 opacity-0',
-        ].join(' ')}
-      >
+      <div className={['sm:hidden border-t border-ink-200 bg-paper-50 overflow-hidden transition-all duration-base', mobileOpen ? 'max-h-80 opacity-100' : 'max-h-0 opacity-0'].join(' ')}>
         <nav className="px-4 py-3 flex flex-col gap-0.5">
           {navLinks.map(({ to, label }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={to === '/'}
-              className={mobileLinkClass}
-              onClick={() => setMobileOpen(false)}
-            >
+            <NavLink key={to} to={to} end={to === '/'} className={mobileLinkClass} onClick={() => setMobileOpen(false)}>
               {label}
             </NavLink>
           ))}
@@ -132,18 +174,32 @@ export default function Navbar() {
           <div className="my-1 border-t border-ink-100" />
 
           {user ? (
-            <button
-              onClick={() => { logout(); setMobileOpen(false) }}
-              className="font-ui font-semibold text-[11px] uppercase tracking-wide-xs px-3 py-3 w-full text-left rounded-sm text-ink-400 hover:text-ink-900 hover:bg-ink-100 transition-colors duration-base cursor-pointer"
-            >
-              Sign out
-            </button>
+            <>
+              {/* Who is logged in */}
+              <div className="px-3 py-2">
+                <p className="font-ui font-semibold text-[11px] text-ink-900 truncate">
+                  {mobileDisplayName}
+                </p>
+                <p className="font-ui text-[9px] uppercase tracking-wide-xs text-ink-400 mt-0.5">
+                  Logged in as {ROLE_LABEL[user.role] || user.role}
+                </p>
+              </div>
+              <NavLink
+                to="/profile"
+                className={mobileLinkClass}
+                onClick={() => setMobileOpen(false)}
+              >
+                My Profile
+              </NavLink>
+              <button
+                onClick={() => { logout(); setMobileOpen(false) }}
+                className="font-ui font-semibold text-[11px] uppercase tracking-wide-xs px-3 py-3 w-full text-left rounded-sm text-ink-400 hover:text-ink-900 hover:bg-ink-100 transition-colors duration-base cursor-pointer"
+              >
+                Sign out
+              </button>
+            </>
           ) : (
-            <NavLink
-              to="/login"
-              className={mobileLinkClass}
-              onClick={() => setMobileOpen(false)}
-            >
+            <NavLink to="/login" className={mobileLinkClass} onClick={() => setMobileOpen(false)}>
               Sign in
             </NavLink>
           )}

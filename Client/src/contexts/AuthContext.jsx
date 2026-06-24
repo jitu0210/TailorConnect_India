@@ -1,31 +1,27 @@
 import { createContext, useContext, useState, useEffect } from 'react'
+import { authApi } from '../lib/api'
 
 const AuthContext = createContext(null)
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null)
+  const [user, setUser]   = useState(null)
   const [token, setToken] = useState(() => localStorage.getItem('tc_token'))
   const [loading, setLoading] = useState(true)
 
+  // Restore session on mount / token change
   useEffect(() => {
     if (!token) { setLoading(false); return }
-    fetch(`${import.meta.env.VITE_API_URL}/auth/me`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then(r => r.ok ? r.json() : Promise.reject())
-      .then(({ user, tailorProfile }) => setUser({ ...user, tailorProfile }))
-      .catch(() => { localStorage.removeItem('tc_token'); setToken(null) })
+    authApi.me(token)
+      .then(({ user: u, tailorProfile }) => setUser({ ...u, tailorProfile }))
+      .catch(() => {
+        localStorage.removeItem('tc_token')
+        setToken(null)
+      })
       .finally(() => setLoading(false))
   }, [token])
 
   const login = async (email, password) => {
-    const r = await fetch(`${import.meta.env.VITE_API_URL}/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-    })
-    const data = await r.json()
-    if (!r.ok) throw new Error(data.message || 'Login failed')
+    const data = await authApi.login({ email, password })
     localStorage.setItem('tc_token', data.token)
     setToken(data.token)
     setUser(data.user)
@@ -33,13 +29,7 @@ export function AuthProvider({ children }) {
   }
 
   const register = async (payload) => {
-    const r = await fetch(`${import.meta.env.VITE_API_URL}/auth/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    })
-    const data = await r.json()
-    if (!r.ok) throw new Error(data.message || 'Registration failed')
+    const data = await authApi.register(payload)
     localStorage.setItem('tc_token', data.token)
     setToken(data.token)
     setUser(data.user)
@@ -48,19 +38,17 @@ export function AuthProvider({ children }) {
 
   const logout = () => {
     localStorage.removeItem('tc_token')
+    localStorage.removeItem('tc_location')
     setToken(null)
     setUser(null)
   }
 
   const refreshUser = async () => {
     if (!token) return
-    const r = await fetch(`${import.meta.env.VITE_API_URL}/auth/me`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-    if (r.ok) {
-      const { user: u, tailorProfile } = await r.json()
+    try {
+      const { user: u, tailorProfile } = await authApi.me(token)
       setUser({ ...u, tailorProfile })
-    }
+    } catch { /* token expired — let next request handle it */ }
   }
 
   return (

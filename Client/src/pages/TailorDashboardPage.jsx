@@ -1,20 +1,13 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import Button from '../components/ui/Button'
-import { Input, Select } from '../components/ui/Input'
+import { Input } from '../components/ui/Input'
+import LocationSelector from '../components/ui/LocationSelector'
 import Badge from '../components/ui/Badge'
 import Avatar from '../components/ui/Avatar'
 import RatingStars from '../components/ui/RatingStars'
-import { tailorsApi, subscriptionsApi } from '../lib/api'
-
-const STATES_INDIA = [
-  'Andhra Pradesh','Arunachal Pradesh','Assam','Bihar','Chhattisgarh','Goa','Gujarat',
-  'Haryana','Himachal Pradesh','Jharkhand','Karnataka','Kerala','Madhya Pradesh',
-  'Maharashtra','Manipur','Meghalaya','Mizoram','Nagaland','Odisha','Punjab','Rajasthan',
-  'Sikkim','Tamil Nadu','Telangana','Tripura','Uttar Pradesh','Uttarakhand','West Bengal',
-  'Delhi','Jammu and Kashmir','Ladakh','Puducherry',
-]
+import { tailorsApi, subscriptionsApi, uploadsApi } from '../lib/api'
 
 const SPECIALTY_SUGGESTIONS = [
   "Men's Formal","Men's Kurta",'Sherwani',"Women's Suits",'Salwar Kameez',
@@ -226,7 +219,7 @@ export default function TailorDashboardPage() {
   const [dataLoading, setDataLoading] = useState(true)
 
   // Setup form (no profile yet)
-  const [setup, setSetup] = useState({ shopName: '', ownerName: '', whatsapp: '', city: '', state: '' })
+  const [setup, setSetup] = useState({ shopName: '', ownerName: '', whatsapp: '', mobile: '', email: '', state: '', district: '', city: '' })
   const [setupLoading, setSetupLoading] = useState(false)
   const [setupError, setSetupError] = useState('')
 
@@ -236,7 +229,17 @@ export default function TailorDashboardPage() {
   const [saveError, setSaveError] = useState('')
   const [saveSuccess, setSaveSuccess] = useState(false)
 
+  // Photo uploads
+  const profileInputRef  = useRef(null)
+  const coverInputRef    = useRef(null)
+  const galleryInputRef  = useRef(null)
+  const [photoLoading, setPhotoLoading] = useState(null) // 'profile'|'cover'|'gallery'
+  const [photoError, setPhotoError]     = useState('')
+  const [galleryCategory, setGalleryCategory] = useState('General')
+  const [galleryCaption, setGalleryCaption]   = useState('')
+
   // Subscription / Razorpay
+  const [selectedPlan, setSelectedPlan] = useState('semiannual')
   const [upgradeLoading, setUpgradeLoading] = useState(false)
   const [upgradeError, setUpgradeError] = useState('')
   const [upgradeSuccess, setUpgradeSuccess] = useState(false)
@@ -309,19 +312,19 @@ export default function TailorDashboardPage() {
     }
   }
 
-  async function handleUpgrade() {
+  async function handleUpgrade(plan) {
     setUpgradeError('')
     setUpgradeSuccess(false)
     setUpgradeLoading(true)
     try {
-      const order = await subscriptionsApi.createOrder(token)
+      const order = await subscriptionsApi.createOrder(plan, token)
       await loadRazorpay()
       const rzp = new window.Razorpay({
         key: order.keyId,
         amount: order.amount,
         currency: order.currency,
         name: 'TailorConnect India',
-        description: 'Premium Plan · 1 Month',
+        description: `Premium · ${order.planLabel}`,
         order_id: order.orderId,
         prefill: order.prefill,
         theme: { color: '#111111' },
@@ -357,6 +360,58 @@ export default function TailorDashboardPage() {
     setReviews(rs =>
       rs.map(r => r._id === reviewId ? { ...r, tailorReply: { text, repliedAt: new Date() } } : r)
     )
+  }
+
+  async function handleProfilePhotoUpload(e, field) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setPhotoError('')
+    setPhotoLoading(field)
+    try {
+      const fd = new FormData()
+      fd.append(field, file)
+      const updated = await uploadsApi.tailorProfile(fd, token)
+      setProfile(p => ({ ...p, ...updated }))
+      setEditForm(f => ({ ...f, ...updated }))
+    } catch (err) {
+      setPhotoError(err.message)
+    } finally {
+      setPhotoLoading(null)
+      e.target.value = ''
+    }
+  }
+
+  async function handleGalleryAdd(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setPhotoError('')
+    setPhotoLoading('gallery')
+    try {
+      const fd = new FormData()
+      fd.append('image', file)
+      fd.append('category', galleryCategory)
+      if (galleryCaption.trim()) fd.append('caption', galleryCaption.trim())
+      const newItem = await uploadsApi.galleryAdd(fd, token)
+      // Server returns the newly added item, so push it into existing gallery
+      setProfile(p => ({ ...p, gallery: [...(p.gallery || []), newItem] }))
+      setGalleryCaption('')
+    } catch (err) {
+      setPhotoError(err.message)
+    } finally {
+      setPhotoLoading(null)
+      e.target.value = ''
+    }
+  }
+
+  async function handleGalleryDelete(itemId) {
+    setPhotoError('')
+    try {
+      await uploadsApi.galleryDelete(itemId, token)
+      // Server returns { message } — filter locally instead
+      setProfile(p => ({ ...p, gallery: (p.gallery || []).filter(g => g._id !== itemId) }))
+    } catch (err) {
+      setPhotoError(err.message)
+    }
   }
 
   // ── Loading skeleton ──────────────────────────────────────────────────────
@@ -407,20 +462,36 @@ export default function TailorDashboardPage() {
                 required
               />
               <Input
-                label="City"
-                value={setup.city}
-                onChange={e => setSetup(s => ({ ...s, city: e.target.value }))}
-                placeholder="e.g. Raipur"
+                label="Mobile / contact number"
+                type="tel"
+                value={setup.mobile}
+                onChange={e => setSetup(s => ({ ...s, mobile: e.target.value }))}
+                placeholder="10-digit number"
+                hint="Customers can call you on this number"
                 required
               />
-              <Select
-                label="State"
-                value={setup.state}
-                onChange={e => setSetup(s => ({ ...s, state: e.target.value }))}
-              >
-                <option value="">Select state</option>
-                {STATES_INDIA.map(st => <option key={st} value={st}>{st}</option>)}
-              </Select>
+              <Input
+                label="Email address"
+                type="email"
+                value={setup.email}
+                onChange={e => setSetup(s => ({ ...s, email: e.target.value }))}
+                placeholder="you@example.com"
+                hint="Customers can also reach you by email"
+                required
+              />
+              <div>
+                <p className="font-ui font-semibold text-[10px] uppercase tracking-wide-lg text-ink-400 mb-3">
+                  Shop location
+                </p>
+                <LocationSelector
+                  value={{ state: setup.state, district: setup.district, city: setup.city }}
+                  onChange={({ state, district, city }) => setSetup(s => ({ ...s, state, district, city }))}
+                  required
+                />
+                <p className="font-t italic text-[13px] text-ink-400 mt-2">
+                  Customers nearby see your shop first.
+                </p>
+              </div>
               {setupError && <p className="font-t italic text-[14px] text-ink-700">{setupError}</p>}
               <Button type="submit" className="w-full" size="lg" disabled={setupLoading}>
                 {setupLoading ? 'Creating shop…' : 'Create shop'}
@@ -437,6 +508,7 @@ export default function TailorDashboardPage() {
   const tabs = [
     { key: 'overview', label: 'Overview' },
     { key: 'profile', label: 'Edit Profile' },
+    { key: 'photos', label: profile?.gallery?.length ? `Photos (${profile.gallery.length})` : 'Photos' },
     { key: 'reviews', label: reviews.length ? `Reviews (${reviews.length})` : 'Reviews' },
     { key: 'subscription', label: 'Subscription' },
   ]
@@ -616,18 +688,22 @@ export default function TailorDashboardPage() {
               hint="Customers will contact you on this number"
             />
             <Input
-              label="Mobile (optional)"
+              label="Mobile / contact number"
               type="tel"
               value={editForm.mobile || ''}
               onChange={e => setField('mobile', e.target.value)}
+              required
+              hint="Customers can call you on this number"
             />
           </div>
 
           <Input
-            label="Email (optional)"
+            label="Email address"
             type="email"
             value={editForm.email || ''}
             onChange={e => setField('email', e.target.value)}
+            required
+            hint="Customers can also reach you by email"
           />
 
           <div className="cut-line" />
@@ -639,35 +715,30 @@ export default function TailorDashboardPage() {
             placeholder="Locality / street"
           />
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <div className="col-span-2">
-              <Input
-                label="City"
-                value={editForm.city || ''}
-                onChange={e => setField('city', e.target.value)}
-                required
-              />
-            </div>
-            <Input
-              label="District"
-              value={editForm.district || ''}
-              onChange={e => setField('district', e.target.value)}
-            />
-            <Input
-              label="Pincode"
-              value={editForm.pincode || ''}
-              onChange={e => setField('pincode', e.target.value)}
+          <div>
+            <p className="font-ui font-semibold text-[10px] uppercase tracking-wide-lg text-ink-400 mb-3">
+              Shop location
+            </p>
+            <LocationSelector
+              value={{
+                state: editForm.state || '',
+                district: editForm.district || '',
+                city: editForm.city || '',
+              }}
+              onChange={({ state, district, city }) => {
+                setField('state', state)
+                setField('district', district)
+                setField('city', city)
+              }}
+              required
             />
           </div>
 
-          <Select
-            label="State"
-            value={editForm.state || ''}
-            onChange={e => setField('state', e.target.value)}
-          >
-            <option value="">Select state</option>
-            {STATES_INDIA.map(st => <option key={st} value={st}>{st}</option>)}
-          </Select>
+          <Input
+            label="Pincode"
+            value={editForm.pincode || ''}
+            onChange={e => setField('pincode', e.target.value)}
+          />
 
           <div className="cut-line" />
 
@@ -738,6 +809,216 @@ export default function TailorDashboardPage() {
         </form>
       )}
 
+      {/* ── Photos ── */}
+      {tab === 'photos' && (
+        <div className="space-y-10 max-w-2xl">
+
+          {photoError && (
+            <p className="font-t italic text-[14px] text-ink-700 border border-ink-300 rounded-sm px-4 py-3">
+              {photoError}
+            </p>
+          )}
+
+          {/* Hidden camera inputs — capture="environment" forces back camera, no gallery */}
+          <input ref={profileInputRef} type="file" accept="image/*" capture="environment"
+            className="sr-only" onChange={e => handleProfilePhotoUpload(e, 'profileImage')} />
+          <input ref={coverInputRef} type="file" accept="image/*" capture="environment"
+            className="sr-only" onChange={e => handleProfilePhotoUpload(e, 'coverImage')} />
+          <input ref={galleryInputRef} type="file" accept="image/*" capture="environment"
+            className="sr-only" onChange={handleGalleryAdd} />
+
+          {/* ── Profile & cover photos ── */}
+          <section>
+            <p className="font-ui font-bold text-[11px] uppercase tracking-wide-xl text-ink-500 mb-5">
+              Profile &amp; cover photos
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+
+              {/* Profile photo */}
+              <div>
+                <p className="font-ui font-semibold text-[10px] uppercase tracking-wide-sm text-ink-500 mb-3">
+                  Profile photo
+                </p>
+                <div className="w-full aspect-square rounded-sm overflow-hidden bg-paper-100 mb-3 relative">
+                  {profile?.profileImage ? (
+                    <img src={profile.profileImage} alt="Profile" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-ink-300">
+                      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                        <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/>
+                      </svg>
+                    </div>
+                  )}
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={photoLoading === 'profile'}
+                  onClick={() => profileInputRef.current?.click()}
+                >
+                  {photoLoading === 'profile' ? 'Uploading…' : (
+                    <>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="flex-shrink-0">
+                        <circle cx="12" cy="12" r="3"/><path d="M14.5 4h-5L7 7H4a2 2 0 00-2 2v9a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2h-3l-2.5-3z"/>
+                      </svg>
+                      {profile?.profileImage ? 'Replace photo' : 'Take photo'}
+                    </>
+                  )}
+                </Button>
+                <p className="font-t italic text-[12px] text-ink-400 mt-2">Camera only · no gallery access</p>
+              </div>
+
+              {/* Cover photo */}
+              <div>
+                <p className="font-ui font-semibold text-[10px] uppercase tracking-wide-sm text-ink-500 mb-3">
+                  Cover photo
+                </p>
+                <div className="w-full aspect-[16/9] rounded-sm overflow-hidden bg-paper-100 mb-3 relative">
+                  {profile?.coverImage ? (
+                    <img src={profile.coverImage} alt="Cover" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-ink-300">
+                      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
+                        <polyline points="21 15 16 10 5 21"/>
+                      </svg>
+                    </div>
+                  )}
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={photoLoading === 'cover'}
+                  onClick={() => coverInputRef.current?.click()}
+                >
+                  {photoLoading === 'cover' ? 'Uploading…' : (
+                    <>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="flex-shrink-0">
+                        <circle cx="12" cy="12" r="3"/><path d="M14.5 4h-5L7 7H4a2 2 0 00-2 2v9a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2h-3l-2.5-3z"/>
+                      </svg>
+                      {profile?.coverImage ? 'Replace cover' : 'Take photo'}
+                    </>
+                  )}
+                </Button>
+                <p className="font-t italic text-[12px] text-ink-400 mt-2">Camera only · no gallery access</p>
+              </div>
+            </div>
+          </section>
+
+          <div className="cut-line" />
+
+          {/* ── Gallery ── */}
+          <section>
+            <div className="flex items-baseline justify-between mb-5 gap-3 flex-wrap">
+              <p className="font-ui font-bold text-[11px] uppercase tracking-wide-xl text-ink-500">
+                Shop gallery
+              </p>
+              {(profile?.gallery?.length || 0) > 0 && (
+                <span className="font-t italic text-[13px] text-ink-400">
+                  {profile.gallery.length} photo{profile.gallery.length === 1 ? '' : 's'}
+                </span>
+              )}
+            </div>
+
+            {/* Add new photo controls */}
+            <div className="bg-paper-100 rounded-sm px-5 py-4 mb-6 space-y-3">
+              <p className="font-ui font-semibold text-[10px] uppercase tracking-wide-sm text-ink-500">
+                Add a photo
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1.5">
+                  <label className="font-ui font-semibold text-[10px] uppercase tracking-wide-xs text-ink-500">
+                    Category
+                  </label>
+                  <select
+                    value={galleryCategory}
+                    onChange={e => setGalleryCategory(e.target.value)}
+                    className="border border-ink-200 rounded-sm px-3 py-2 font-ui text-[13px] text-ink-900 bg-paper-0 outline-none focus:border-ink-900 transition-colors duration-base"
+                  >
+                    {["Men's Wear","Women's Wear","Bridal Wear","Alterations","Uniforms","Designer","General"].map(c => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="font-ui font-semibold text-[10px] uppercase tracking-wide-xs text-ink-500">
+                    Caption (optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={galleryCaption}
+                    onChange={e => setGalleryCaption(e.target.value)}
+                    maxLength={80}
+                    placeholder="Describe this photo…"
+                    className="border border-ink-200 rounded-sm px-3 py-2 font-t text-[14px] text-ink-900 bg-paper-0 outline-none focus:border-ink-900 transition-colors duration-base placeholder:text-ink-400"
+                  />
+                </div>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={photoLoading === 'gallery'}
+                onClick={() => galleryInputRef.current?.click()}
+              >
+                {photoLoading === 'gallery' ? 'Uploading…' : (
+                  <>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="flex-shrink-0">
+                      <circle cx="12" cy="12" r="3"/><path d="M14.5 4h-5L7 7H4a2 2 0 00-2 2v9a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2h-3l-2.5-3z"/>
+                    </svg>
+                    Open camera &amp; add photo
+                  </>
+                )}
+              </Button>
+              <p className="font-t italic text-[12px] text-ink-400">
+                Live camera only — your device's back camera will open. No gallery access.
+              </p>
+            </div>
+
+            {/* Gallery grid */}
+            {(profile?.gallery?.length || 0) === 0 ? (
+              <p className="font-t italic text-ink-400 text-[15px]">
+                No photos yet. Add some photos of your work to attract more customers.
+              </p>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {(profile.gallery || []).map((item) => (
+                  <div key={item._id || item.publicId} className="relative group">
+                    <div className="aspect-square overflow-hidden rounded-sm bg-paper-100">
+                      <img
+                        src={item.url}
+                        alt={item.caption || item.category || 'Shop photo'}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    {(item.category || item.caption) && (
+                      <div className="mt-1.5">
+                        {item.category && (
+                          <p className="font-ui text-[9px] uppercase tracking-wide-xs text-ink-400">{item.category}</p>
+                        )}
+                        {item.caption && (
+                          <p className="font-t italic text-[12px] text-ink-600 truncate">{item.caption}</p>
+                        )}
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => handleGalleryDelete(item._id)}
+                      className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-ink-900/80 text-paper-50 text-[11px] leading-none flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-base cursor-pointer hover:bg-ink-900"
+                      aria-label="Delete photo"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        </div>
+      )}
+
       {/* ── Reviews ── */}
       {tab === 'reviews' && (
         <div>
@@ -767,16 +1048,29 @@ export default function TailorDashboardPage() {
 
       {/* ── Subscription ── */}
       {tab === 'subscription' && (
-        <div className="max-w-sm space-y-5">
-          {/* Current plan */}
+        <div className="max-w-2xl space-y-6">
+          {/* Current plan card */}
           <div className="bg-paper-0 border border-ink-200 rounded-md px-6 py-5">
             <p className="font-ui font-semibold text-[10px] uppercase tracking-wide-xl text-ink-400 mb-1">
               Current plan
             </p>
             <p className="font-d text-4xl text-ink-900 capitalize leading-none">
-              {subscription?.plan || profile.subscriptionType}
+              {subscription?.trialActive
+                ? 'Early Bird Trial'
+                : subscription?.plan || profile.subscriptionType || 'Free'}
             </p>
-            {subscription?.isActive && subscription?.expiryDate && (
+            {subscription?.trialActive && subscription?.freeTrialEnds && (
+              <p className="font-t italic text-[14px] text-ink-500 mt-1.5">
+                Free trial ends{' '}
+                {new Date(subscription.freeTrialEnds).toLocaleDateString('en-IN', {
+                  day: 'numeric', month: 'long', year: 'numeric',
+                })}
+                {subscription.daysUntilTrialEnd != null && (
+                  <span className="ml-1">({subscription.daysUntilTrialEnd} days left)</span>
+                )}
+              </p>
+            )}
+            {!subscription?.trialActive && subscription?.isActive && subscription?.expiryDate && (
               <p className="font-t italic text-[14px] text-ink-500 mt-1.5">
                 Active until{' '}
                 {new Date(subscription.expiryDate).toLocaleDateString('en-IN', {
@@ -784,44 +1078,86 @@ export default function TailorDashboardPage() {
                 })}
               </p>
             )}
-            {subscription?.plan === 'premium' && !subscription?.isActive && (
+            {!subscription?.isActive && subscription?.plan === 'premium' && (
               <p className="font-t italic text-[14px] text-ink-500 mt-1.5">Expired</p>
             )}
           </div>
 
-          {/* Premium upsell */}
+          {/* Plan picker + upsell (only when not on active paid premium) */}
           {!(subscription?.plan === 'premium' && subscription?.isActive) && (
-            <div className="border border-dashed border-ink-900 rounded-md px-6 py-6">
-              <p className="font-ui font-bold text-[11px] uppercase tracking-wide-xl text-ink-900 mb-1">
-                Premium plan
+            <div className="space-y-4">
+              <p className="font-ui font-bold text-[11px] uppercase tracking-wide-xl text-ink-500">
+                Choose a plan
               </p>
-              <p className="font-d text-3xl text-ink-900 mb-5 leading-none">
-                ₹999{' '}
-                <span className="font-ui font-normal text-[13px] text-ink-500">/ month</span>
-              </p>
-              <ul className="space-y-2 mb-6">
+
+              {/* 3-plan selector */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {[
-                  'Priority placement in search results',
-                  'Featured listing badge',
-                  'Unlimited gallery photos',
-                  'Direct customer inquiries',
-                ].map(f => (
-                  <li key={f} className="font-t text-[15px] text-ink-700 flex gap-2.5">
-                    <span className="text-ink-900 font-semibold flex-shrink-0">✓</span>
-                    {f}
-                  </li>
+                  { key: 'monthly',    label: 'Monthly',  price: '₹415',  per: '₹415 / mo',    save: null },
+                  { key: 'semiannual', label: '6 Months', price: '₹1,660', per: '₹277 / mo', save: 'Save 33%' },
+                  { key: 'annual',     label: 'Annual',   price: '₹2,905', per: '₹242 / mo', save: 'Best value' },
+                ].map(plan => (
+                  <button
+                    key={plan.key}
+                    type="button"
+                    onClick={() => setSelectedPlan(plan.key)}
+                    className={[
+                      'relative border rounded-md px-5 py-4 text-left transition-all duration-base cursor-pointer',
+                      selectedPlan === plan.key
+                        ? 'border-ink-900 bg-paper-0 shadow-sm'
+                        : 'border-ink-200 bg-paper-50 hover:border-ink-400',
+                    ].join(' ')}
+                  >
+                    {plan.save && (
+                      <span className="absolute -top-2.5 left-4 font-ui font-semibold text-[9px] uppercase tracking-wide-xs bg-ink-900 text-paper-50 px-2 py-0.5 rounded-sm">
+                        {plan.save}
+                      </span>
+                    )}
+                    <p className="font-ui font-semibold text-[10px] uppercase tracking-wide-xs text-ink-500 mb-1">
+                      {plan.label}
+                    </p>
+                    <p className="font-d text-2xl text-ink-900 leading-none">{plan.price}</p>
+                    <p className="font-ui text-[11px] text-ink-400 mt-1">{plan.per}</p>
+                    {selectedPlan === plan.key && (
+                      <div className="absolute top-3 right-3 w-4 h-4 rounded-full bg-ink-900 flex items-center justify-center">
+                        <span className="text-paper-50 text-[8px] font-bold leading-none">✓</span>
+                      </div>
+                    )}
+                  </button>
                 ))}
-              </ul>
+              </div>
+
+              {/* Features list */}
+              <div className="border border-dashed border-ink-300 rounded-md px-5 py-4">
+                <p className="font-ui font-semibold text-[10px] uppercase tracking-wide-sm text-ink-500 mb-3">
+                  All premium plans include
+                </p>
+                <ul className="space-y-2">
+                  {[
+                    'Priority placement in search results',
+                    'Featured listing badge',
+                    'Unlimited gallery photos',
+                    'Direct customer inquiries',
+                    'Shop stays active — no deactivation',
+                  ].map(f => (
+                    <li key={f} className="font-t text-[15px] text-ink-700 flex gap-2.5">
+                      <span className="text-ink-900 font-semibold flex-shrink-0">✓</span>
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
               {upgradeError && (
-                <p className="font-t italic text-[14px] text-ink-700 mb-3">{upgradeError}</p>
+                <p className="font-t italic text-[14px] text-ink-700">{upgradeError}</p>
               )}
               {upgradeSuccess && (
-                <p className="font-t italic text-[14px] text-ink-600 mb-3">
+                <p className="font-t italic text-[14px] text-ink-600">
                   Premium activated — thank you!
                 </p>
               )}
               <Button
-                onClick={handleUpgrade}
+                onClick={() => handleUpgrade(selectedPlan)}
                 disabled={upgradeLoading}
                 className="w-full"
                 size="lg"

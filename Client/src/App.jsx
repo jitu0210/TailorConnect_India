@@ -7,11 +7,14 @@ import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import TailorDashboardPage from './pages/TailorDashboardPage'
 import AdminDashboardPage from './pages/AdminDashboardPage'
+import TopRatedPage from './pages/TopRatedPage'
+import ProfilePage from './pages/ProfilePage'
 
 const FOOTER_LINKS = {
   Platform: [
     { to: '/',                  label: 'Find Tailors'    },
     { to: '/?browse=1',         label: 'Browse All'      },
+    { to: '/top-rated',         label: 'Top Rated'       },
     { to: '/register/tailor',   label: 'List Your Shop'  },
   ],
   Account: [
@@ -37,6 +40,8 @@ export default function App() {
               <Route path="/register/tailor"     element={<RegisterPage role="tailor" />}       />
               <Route path="/dashboard/tailor"    element={<TailorDashboardPage />}              />
               <Route path="/admin"               element={<AdminDashboardPage />}               />
+              <Route path="/top-rated"           element={<TopRatedPage />}                     />
+              <Route path="/profile"            element={<ProfilePage />}                      />
             </Routes>
           </main>
 
