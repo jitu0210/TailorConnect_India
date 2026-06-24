@@ -6,13 +6,14 @@ const userSchema = new mongoose.Schema(
     role: { type: String, enum: ['customer', 'tailor', 'admin'], required: true },
     fullName: { type: String, required: true, trim: true },
     email: { type: String, required: true, unique: true, trim: true, lowercase: true },
-    mobile: { type: String, required: true, trim: true },
+    mobile: { type: String, trim: true },
     password: { type: String, required: true, minlength: 6, select: false },
 
     // Location
     state: { type: String, trim: true },
     district: { type: String, trim: true },
     city: { type: String, trim: true },
+    pincode: { type: String, trim: true },
 
     profileImage: { type: String },
     favorites: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Tailor' }],

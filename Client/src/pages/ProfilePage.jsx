@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { authApi } from '../lib/api'
+import { useToast } from '../contexts/ToastContext'
 import Button from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
 import LocationSelector from '../components/ui/LocationSelector'
@@ -11,23 +12,21 @@ const ROLE_LABEL = { tailor: 'Tailor', customer: 'Customer', admin: 'Admin' }
 export default function ProfilePage() {
   const { user, token, loading: authLoading, refreshUser } = useAuth()
   const navigate = useNavigate()
+  const toast = useToast()
 
   const [editMode, setEditMode]       = useState(false)
   const [form, setForm]               = useState({})
   const [saveLoading, setSaveLoading] = useState(false)
-  const [saveError, setSaveError]     = useState('')
-  const [saveSuccess, setSaveSuccess] = useState(false)
 
   const [pwForm, setPwForm]         = useState({ currentPassword: '', newPassword: '', confirmPassword: '' })
   const [pwLoading, setPwLoading]   = useState(false)
-  const [pwError, setPwError]       = useState('')
-  const [pwSuccess, setPwSuccess]   = useState(false)
   const [showPw, setShowPw]         = useState(false)
 
   // Auth guard
   useEffect(() => {
     if (authLoading) return
     if (!user) navigate('/login', { state: { from: '/profile' }, replace: true })
+    else if (user.role === 'admin') navigate('/admin/tci_01/dashboard_hidden', { replace: true })
   }, [user, authLoading, navigate])
 
   // Sync form when user loads
@@ -39,6 +38,7 @@ export default function ProfilePage() {
         state:    user.state    || '',
         district: user.district || '',
         city:     user.city     || '',
+        pincode:  user.pincode  || '',
       })
     }
   }, [user])
@@ -49,8 +49,6 @@ export default function ProfilePage() {
 
   async function handleSave(e) {
     e.preventDefault()
-    setSaveError('')
-    setSaveSuccess(false)
     setSaveLoading(true)
     try {
       await authApi.updateMe({
@@ -59,13 +57,13 @@ export default function ProfilePage() {
         state:    form.state,
         district: form.district,
         city:     form.city,
+        pincode:  form.pincode,
       }, token)
       await refreshUser()
-      setSaveSuccess(true)
       setEditMode(false)
-      setTimeout(() => setSaveSuccess(false), 3000)
+      toast('Profile saved.')
     } catch (err) {
-      setSaveError(err.message)
+      toast(err.message, 'error')
     } finally {
       setSaveLoading(false)
     }
@@ -73,7 +71,6 @@ export default function ProfilePage() {
 
   function cancelEdit() {
     setEditMode(false)
-    setSaveError('')
     if (user) {
       setForm({
         fullName: user.fullName || '',
@@ -81,19 +78,18 @@ export default function ProfilePage() {
         state:    user.state    || '',
         district: user.district || '',
         city:     user.city     || '',
+        pincode:  user.pincode  || '',
       })
     }
   }
 
   async function handlePasswordChange(e) {
     e.preventDefault()
-    setPwError('')
-    setPwSuccess(false)
     if (pwForm.newPassword !== pwForm.confirmPassword) {
-      return setPwError('New passwords do not match')
+      return toast('New passwords do not match', 'error')
     }
     if (pwForm.newPassword.length < 6) {
-      return setPwError('New password must be at least 6 characters')
+      return toast('New password must be at least 6 characters', 'error')
     }
     setPwLoading(true)
     try {
@@ -101,12 +97,11 @@ export default function ProfilePage() {
         currentPassword: pwForm.currentPassword,
         newPassword:     pwForm.newPassword,
       }, token)
-      setPwSuccess(true)
       setPwForm({ currentPassword: '', newPassword: '', confirmPassword: '' })
       setShowPw(false)
-      setTimeout(() => setPwSuccess(false), 4000)
+      toast('Password changed successfully.')
     } catch (err) {
-      setPwError(err.message)
+      toast(err.message, 'error')
     } finally {
       setPwLoading(false)
     }
@@ -146,7 +141,7 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {!editMode && (
+        {!editMode && user.role !== 'tailor' && (
           <Button variant="outline" size="sm" onClick={() => setEditMode(true)} className="flex-shrink-0">
             Edit profile
           </Button>
@@ -220,27 +215,29 @@ export default function ProfilePage() {
           {!(user.state || user.district || user.city) && (
             <div className="px-6 py-5">
               <p className="font-t italic text-[14px] text-ink-400">
-                No location set.{' '}
-                <button
-                  type="button"
-                  onClick={() => setEditMode(true)}
-                  className="underline hover:no-underline text-ink-600 cursor-pointer"
-                >
-                  Add your location
-                </button>{' '}
-                to see nearby tailors first.
+                {user.role === 'tailor'
+                  ? 'No location set. Update it from My Shop → Edit Profile.'
+                  : <>No location set.{' '}
+                    <button
+                      type="button"
+                      onClick={() => setEditMode(true)}
+                      className="underline hover:no-underline text-ink-600 cursor-pointer"
+                    >
+                      Add your location
+                    </button>{' '}
+                    to see nearby tailors first.
+                  </>
+                }
               </p>
             </div>
           )}
         </div>
       )}
 
-      {saveSuccess && !editMode && (
-        <p className="font-t italic text-[14px] text-ink-600 mt-3">Profile updated.</p>
-      )}
+
 
       {/* ── Edit Mode ─────────────────────────────────────────────────────── */}
-      {editMode && (
+      {editMode && user.role !== 'tailor' && (
         <form onSubmit={handleSave} className="bg-paper-0 border border-ink-200 rounded-md px-6 py-6 space-y-5">
           <p className="font-ui font-semibold text-[10px] uppercase tracking-wide-xl text-ink-400">
             Edit profile
@@ -276,19 +273,15 @@ export default function ProfilePage() {
               Location
             </p>
             <LocationSelector
-              value={{ state: form.state, district: form.district, city: form.city }}
-              onChange={({ state, district, city }) =>
-                setForm(f => ({ ...f, state, district, city }))
+              value={{ state: form.state, district: form.district, city: form.city, pincode: form.pincode }}
+              onChange={({ state, district, city, pincode = '' }) =>
+                setForm(f => ({ ...f, state, district, city, pincode }))
               }
             />
             <p className="font-t italic text-[13px] text-ink-400 mt-2">
               Helps surface tailors near you on the homepage.
             </p>
           </div>
-
-          {saveError && (
-            <p className="font-t italic text-[14px] text-ink-700">{saveError}</p>
-          )}
 
           <div className="flex gap-3 pt-1">
             <Button type="submit" disabled={saveLoading}>
@@ -319,10 +312,6 @@ export default function ProfilePage() {
             )}
           </div>
 
-          {pwSuccess && (
-            <p className="font-t italic text-[14px] text-ink-600 mb-3">Password changed successfully.</p>
-          )}
-
           {showPw && (
             <form onSubmit={handlePasswordChange} className="space-y-4">
               <Input
@@ -347,10 +336,6 @@ export default function ProfilePage() {
                 required
               />
 
-              {pwError && (
-                <p className="font-t italic text-[14px] text-ink-700">{pwError}</p>
-              )}
-
               <div className="flex gap-3">
                 <Button type="submit" disabled={pwLoading}>
                   {pwLoading ? 'Updating…' : 'Update password'}
@@ -358,7 +343,7 @@ export default function ProfilePage() {
                 <Button
                   type="button"
                   variant="ghost"
-                  onClick={() => { setShowPw(false); setPwError(''); setPwForm({ currentPassword: '', newPassword: '', confirmPassword: '' }) }}
+                  onClick={() => { setShowPw(false); setPwForm({ currentPassword: '', newPassword: '', confirmPassword: '' }) }}
                   disabled={pwLoading}
                 >
                   Cancel

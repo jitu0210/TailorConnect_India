@@ -51,8 +51,14 @@ export function AuthProvider({ children }) {
     } catch { /* token expired — let next request handle it */ }
   }
 
+  const setAuthFromResponse = ({ token: t, user: u }) => {
+    localStorage.setItem('tc_token', t)
+    setToken(t)
+    setUser(u)
+  }
+
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, register, logout, refreshUser }}>
+    <AuthContext.Provider value={{ user, token, loading, login, register, logout, refreshUser, setAuthFromResponse }}>
       {children}
     </AuthContext.Provider>
   )

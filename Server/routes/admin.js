@@ -10,21 +10,33 @@ import { requireRole } from '../middleware/role.js'
 const router = Router()
 router.use(protect, requireRole('admin'))
 
-// ── Analytics ─────────────────────────────────────────────────────────────────
 router.get('/analytics', async (req, res, next) => {
   try {
-    const [users, tailors, reviews, activeSubscriptions, pendingTailors] = await Promise.all([
-      User.countDocuments(),
+    const [users, tailors, reviews, activeSubscriptions, pendingTailors, approvedTailors, rejectedTailors, revenueAgg] = await Promise.all([
+      User.countDocuments({ role: { $ne: 'admin' } }),
       Tailor.countDocuments(),
       Review.countDocuments(),
       Subscription.countDocuments({ status: 'active' }),
       Tailor.countDocuments({ status: 'pending' }),
+      Tailor.countDocuments({ status: 'approved' }),
+      Tailor.countDocuments({ status: 'rejected' }),
+      Subscription.aggregate([{ $match: { status: 'active' } }, { $group: { _id: null, total: { $sum: '$amount' } } }]),
     ])
-    res.json({ users, tailors, reviews, activeSubscriptions, pendingTailors })
+    const revenue = revenueAgg[0]?.total || 0
+    res.json({ users, tailors, reviews, activeSubscriptions, pendingTailors, approvedTailors, rejectedTailors, revenue })
   } catch (err) { next(err) }
 })
 
-// ── User Management ───────────────────────────────────────────────────────────
+router.get('/recent', async (req, res, next) => {
+  try {
+    const [recentUsers, recentTailors] = await Promise.all([
+      User.find({ role: 'customer' }).select('fullName email createdAt city state').sort('-createdAt').limit(6),
+      Tailor.find().select('shopName city state status createdAt').sort('-createdAt').limit(6),
+    ])
+    res.json({ recentUsers, recentTailors })
+  } catch (err) { next(err) }
+})
+
 router.get('/users', async (req, res, next) => {
   try {
     const { page = 1, limit = 20, role, search } = req.query
@@ -52,7 +64,18 @@ router.patch('/users/:id/toggle-active', async (req, res, next) => {
   } catch (err) { next(err) }
 })
 
-// ── Tailor Verification ───────────────────────────────────────────────────────
+router.delete('/users/:id', async (req, res, next) => {
+  try {
+    if (req.params.id === req.user._id.toString())
+      return res.status(400).json({ message: 'Cannot delete your own account' })
+    const user = await User.findById(req.params.id)
+    if (!user) return res.status(404).json({ message: 'User not found' })
+    if (user.role === 'admin') return res.status(400).json({ message: 'Cannot delete admin accounts' })
+    await User.findByIdAndDelete(req.params.id)
+    res.json({ message: 'Deleted' })
+  } catch (err) { next(err) }
+})
+
 router.get('/tailors', async (req, res, next) => {
   try {
     const { page = 1, limit = 20, status, search } = req.query
@@ -106,13 +129,23 @@ router.patch('/tailors/:id/top-rated', async (req, res, next) => {
   } catch (err) { next(err) }
 })
 
-// ── Review Moderation ─────────────────────────────────────────────────────────
+router.delete('/tailors/:id', async (req, res, next) => {
+  try {
+    const tailor = await Tailor.findByIdAndDelete(req.params.id)
+    if (!tailor) return res.status(404).json({ message: 'Tailor not found' })
+    res.json({ message: 'Deleted' })
+  } catch (err) { next(err) }
+})
+
 router.get('/reviews', async (req, res, next) => {
   try {
-    const { page = 1, limit = 20 } = req.query
+    const { page = 1, limit = 20, search, rating } = req.query
+    const filter = {}
+    if (search) filter.$or = [{ customerName: { $regex: search, $options: 'i' } }]
+    if (rating) filter.rating = +rating
     const [reviews, total] = await Promise.all([
-      Review.find().populate('tailor', 'shopName city').sort('-createdAt').skip((page - 1) * limit).limit(+limit),
-      Review.countDocuments(),
+      Review.find(filter).populate('tailor', 'shopName city').sort('-createdAt').skip((page - 1) * limit).limit(+limit),
+      Review.countDocuments(filter),
     ])
     res.json({ reviews, total, page: +page, pages: Math.ceil(total / limit) })
   } catch (err) { next(err) }
@@ -126,7 +159,6 @@ router.delete('/reviews/:id', async (req, res, next) => {
   } catch (err) { next(err) }
 })
 
-// ── Subscriptions ─────────────────────────────────────────────────────────────
 router.get('/subscriptions', async (req, res, next) => {
   try {
     const { page = 1, limit = 20, status } = req.query
@@ -136,6 +168,81 @@ router.get('/subscriptions', async (req, res, next) => {
       Subscription.countDocuments(filter),
     ])
     res.json({ subs, total, page: +page, pages: Math.ceil(total / limit) })
+  } catch (err) { next(err) }
+})
+
+// GET /api/admin/timeseries?range=week|month|year|5years|max
+router.get('/timeseries', async (req, res, next) => {
+  try {
+    const { range = 'month' } = req.query
+
+    const now = new Date()
+    let from, groupFmt, labelFmt
+
+    if (range === 'today') {
+      from = new Date(now); from.setHours(0,0,0,0)
+      groupFmt = '%H'        // group by hour
+      labelFmt = 'hour'
+    } else if (range === 'week') {
+      from = new Date(now); from.setDate(from.getDate() - 6)
+      from.setHours(0,0,0,0)
+      groupFmt = '%Y-%m-%d'
+      labelFmt = 'day'
+    } else if (range === 'month') {
+      from = new Date(now); from.setDate(from.getDate() - 29)
+      from.setHours(0,0,0,0)
+      groupFmt = '%Y-%m-%d'
+      labelFmt = 'day'
+    } else if (range === 'year') {
+      from = new Date(now); from.setFullYear(from.getFullYear() - 1)
+      groupFmt = '%Y-%m'
+      labelFmt = 'month'
+    } else if (range === '5years') {
+      from = new Date(now); from.setFullYear(from.getFullYear() - 5)
+      groupFmt = '%Y-%m'
+      labelFmt = 'month'
+    } else {
+      // max — all time, group by month
+      from = new Date('2020-01-01')
+      groupFmt = '%Y-%m'
+      labelFmt = 'month'
+    }
+
+    const pipeline = (model, dateField = 'createdAt', extraMatch = {}) => [
+      { $match: { [dateField]: { $gte: from }, ...extraMatch } },
+      { $group: { _id: { $dateToString: { format: groupFmt, date: `$${dateField}` } }, count: { $sum: 1 } } },
+      { $sort: { _id: 1 } },
+    ]
+
+    const [users, tailors, reviews, subscriptions] = await Promise.all([
+      User.aggregate(pipeline('createdAt', 'createdAt', { role: { $ne: 'admin' } })),
+      Tailor.aggregate(pipeline('createdAt')),
+      Review.aggregate(pipeline('createdAt')),
+      Subscription.aggregate(pipeline('startDate', 'startDate')),
+    ])
+
+    // Build a unified date-keyed map so all series share the same x-axis buckets
+    const keys = new Set([
+      ...users.map(d => d._id),
+      ...tailors.map(d => d._id),
+      ...reviews.map(d => d._id),
+      ...subscriptions.map(d => d._id),
+    ])
+
+    const sorted = [...keys].sort()
+
+    const toMap = arr => Object.fromEntries(arr.map(d => [d._id, d.count]))
+    const uMap = toMap(users), tMap = toMap(tailors), rMap = toMap(reviews), sMap = toMap(subscriptions)
+
+    const data = sorted.map(k => ({
+      label: k,
+      users:         uMap[k] || 0,
+      tailors:       tMap[k] || 0,
+      reviews:       rMap[k] || 0,
+      subscriptions: sMap[k] || 0,
+    }))
+
+    res.json({ data, labelFmt })
   } catch (err) { next(err) }
 })
 

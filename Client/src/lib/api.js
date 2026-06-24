@@ -6,8 +6,10 @@ async function req(path, opts = {}, token = null) {
   const headers = { 'Content-Type': 'application/json', ...opts.headers }
   if (token) headers.Authorization = `Bearer ${token}`
   const r = await fetch(`${BASE}${path}`, { ...opts, headers })
-  const data = await r.json()
-  if (!r.ok) throw new Error(data.message || 'Request failed')
+  const text = await r.text()
+  let data = {}
+  try { data = text ? JSON.parse(text) : {} } catch { /* non-JSON response (e.g. 502 HTML) */ }
+  if (!r.ok) throw new Error(data.message || `Request failed (${r.status})`)
   return data
 }
 
@@ -27,6 +29,10 @@ export const authApi = {
   me:             (token)        => req('/auth/me',              {},                                             token),
   updateMe:       (body, token)  => req('/auth/me',              { method: 'PATCH', body: JSON.stringify(body) }, token),
   changePassword: (body, token)  => req('/auth/change-password', { method: 'POST',  body: JSON.stringify(body) }, token),
+  tailorOtpSend:   (body)        => req('/auth/tailor-otp/send',   { method: 'POST', body: JSON.stringify(body) }),
+  tailorOtpVerify: (body)        => req('/auth/tailor-otp/verify', { method: 'POST', body: JSON.stringify(body) }),
+  forgotSend:      (body)        => req('/auth/forgot/send',        { method: 'POST', body: JSON.stringify(body) }),
+  forgotReset:     (body)        => req('/auth/forgot/reset',       { method: 'POST', body: JSON.stringify(body) }),
 }
 
 export const tailorsApi = {
@@ -81,14 +87,18 @@ export const favoritesApi = {
 }
 
 export const adminApi = {
-  analytics:     (token)           => req('/admin/analytics', {}, token),
-  users:         (params, token)   => req(`/admin/users?${new URLSearchParams(params)}`,          {}, token),
-  toggleUser:    (id, token)       => req(`/admin/users/${id}/toggle-active`,                     { method: 'PATCH' }, token),
-  tailors:       (params, token)   => req(`/admin/tailors?${new URLSearchParams(params)}`,        {}, token),
-  setTailorStatus:(id, status, token)=>req(`/admin/tailors/${id}/status`,  { method: 'PATCH', body: JSON.stringify({ status }) }, token),
-  toggleVerify:  (id, token)       => req(`/admin/tailors/${id}/verify`,    { method: 'PATCH' }, token),
-  toggleTopRated:(id, token)       => req(`/admin/tailors/${id}/top-rated`, { method: 'PATCH' }, token),
-  reviews:       (params, token)   => req(`/admin/reviews?${new URLSearchParams(params)}`,        {}, token),
-  deleteReview:  (id, token)       => req(`/admin/reviews/${id}`, { method: 'DELETE' }, token),
-  subscriptions: (params, token)   => req(`/admin/subscriptions?${new URLSearchParams(params)}`,  {}, token),
+  analytics:      (token)             => req('/admin/analytics', {}, token),
+  recent:         (token)             => req('/admin/recent', {}, token),
+  users:          (params, token)     => req(`/admin/users?${new URLSearchParams(params)}`,         {}, token),
+  toggleUser:     (id, token)         => req(`/admin/users/${id}/toggle-active`,                    { method: 'PATCH' }, token),
+  deleteUser:     (id, token)         => req(`/admin/users/${id}`,                                  { method: 'DELETE' }, token),
+  tailors:        (params, token)     => req(`/admin/tailors?${new URLSearchParams(params)}`,       {}, token),
+  setTailorStatus:(id, status, token) => req(`/admin/tailors/${id}/status`,  { method: 'PATCH', body: JSON.stringify({ status }) }, token),
+  toggleVerify:   (id, token)         => req(`/admin/tailors/${id}/verify`,   { method: 'PATCH' }, token),
+  toggleTopRated: (id, token)         => req(`/admin/tailors/${id}/top-rated`,{ method: 'PATCH' }, token),
+  deleteTailor:   (id, token)         => req(`/admin/tailors/${id}`,          { method: 'DELETE' }, token),
+  reviews:        (params, token)     => req(`/admin/reviews?${new URLSearchParams(params)}`,       {}, token),
+  deleteReview:   (id, token)         => req(`/admin/reviews/${id}`,          { method: 'DELETE' }, token),
+  subscriptions:  (params, token)     => req(`/admin/subscriptions?${new URLSearchParams(params)}`, {}, token),
+  timeseries:     (range, token)      => req(`/admin/timeseries?range=${range}`, {}, token),
 }

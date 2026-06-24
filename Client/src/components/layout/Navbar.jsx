@@ -19,24 +19,24 @@ function UserChip({ user, onSignOut }) {
 
   return (
     <div className="flex items-center gap-2">
-      {/* Avatar — click goes to profile */}
+      {/* Avatar */}
       <button
         type="button"
-        onClick={() => navigate('/profile')}
-        className="w-7 h-7 rounded-full bg-ink-900 border border-ink-700 flex items-center justify-center flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity duration-base"
-        title="View profile"
+        onClick={() => user.role !== 'admin' && navigate('/profile')}
+        className={['w-7 h-7 rounded-full bg-ink-900 border border-ink-700 flex items-center justify-center flex-shrink-0 transition-opacity duration-base', user.role !== 'admin' ? 'cursor-pointer hover:opacity-80' : 'cursor-default'].join(' ')}
+        title={user.role !== 'admin' ? 'View profile' : undefined}
       >
         <span className="font-ui font-semibold text-[9px] text-paper-50 leading-none">
           {initials}
         </span>
       </button>
 
-      {/* Name + role — click goes to profile */}
+      {/* Name + role */}
       <button
         type="button"
-        onClick={() => navigate('/profile')}
-        className="hidden md:block leading-none text-left cursor-pointer hover:opacity-70 transition-opacity duration-base"
-        title="View profile"
+        onClick={() => user.role !== 'admin' && navigate('/profile')}
+        className={['hidden md:block leading-none text-left transition-opacity duration-base', user.role !== 'admin' ? 'cursor-pointer hover:opacity-70' : 'cursor-default'].join(' ')}
+        title={user.role !== 'admin' ? 'View profile' : undefined}
       >
         <p className="font-ui font-semibold text-[11px] text-ink-900 truncate max-w-[120px]">
           {displayName}
@@ -67,7 +67,6 @@ export default function Navbar() {
       ? [
           { to: '/', label: 'Find Tailors' },
           { to: '/top-rated', label: 'Top Rated' },
-          { to: '/admin', label: 'Admin' },
         ]
       : user?.role === 'tailor'
       ? [
@@ -184,13 +183,15 @@ export default function Navbar() {
                   Logged in as {ROLE_LABEL[user.role] || user.role}
                 </p>
               </div>
-              <NavLink
-                to="/profile"
-                className={mobileLinkClass}
-                onClick={() => setMobileOpen(false)}
-              >
-                My Profile
-              </NavLink>
+              {user.role !== 'admin' && (
+                <NavLink
+                  to="/profile"
+                  className={mobileLinkClass}
+                  onClick={() => setMobileOpen(false)}
+                >
+                  My Profile
+                </NavLink>
+              )}
               <button
                 onClick={() => { logout(); setMobileOpen(false) }}
                 className="font-ui font-semibold text-[11px] uppercase tracking-wide-xs px-3 py-3 w-full text-left rounded-sm text-ink-400 hover:text-ink-900 hover:bg-ink-100 transition-colors duration-base cursor-pointer"

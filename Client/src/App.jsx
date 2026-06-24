@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Link } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
+import { ToastProvider } from './contexts/ToastContext'
 import Navbar from './components/layout/Navbar'
 import HomePage from './pages/HomePage'
 import TailorPage from './pages/TailorPage'
@@ -7,6 +8,7 @@ import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import TailorDashboardPage from './pages/TailorDashboardPage'
 import AdminDashboardPage from './pages/AdminDashboardPage'
+import AdminLoginPage from './pages/AdminLoginPage'
 import TopRatedPage from './pages/TopRatedPage'
 import ProfilePage from './pages/ProfilePage'
 
@@ -27,6 +29,7 @@ const FOOTER_LINKS = {
 export default function App() {
   return (
     <BrowserRouter>
+      <ToastProvider>
       <AuthProvider>
         <div className="min-h-screen flex flex-col">
           <Navbar />
@@ -39,7 +42,8 @@ export default function App() {
               <Route path="/register"            element={<RegisterPage />}                     />
               <Route path="/register/tailor"     element={<RegisterPage role="tailor" />}       />
               <Route path="/dashboard/tailor"    element={<TailorDashboardPage />}              />
-              <Route path="/admin"               element={<AdminDashboardPage />}               />
+              <Route path="/admin/tci_01/login"   element={<AdminLoginPage />}                   />
+              <Route path="/admin/tci_01/dashboard_hidden" element={<AdminDashboardPage />}          />
               <Route path="/top-rated"           element={<TopRatedPage />}                     />
               <Route path="/profile"            element={<ProfilePage />}                      />
             </Routes>
@@ -103,6 +107,7 @@ export default function App() {
           </footer>
         </div>
       </AuthProvider>
+      </ToastProvider>
     </BrowserRouter>
   )
 }

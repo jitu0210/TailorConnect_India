@@ -56,6 +56,15 @@ export default {
         'wide-sm': '0.10em',
         'wide-xs': '0.06em',
       },
+      keyframes: {
+        'fade-in': {
+          '0%':   { opacity: '0', transform: 'translateY(-8px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+      },
+      animation: {
+        'fade-in': 'fade-in 180ms cubic-bezier(0.16,1,0.3,1) both',
+      },
     },
   },
   plugins: [],

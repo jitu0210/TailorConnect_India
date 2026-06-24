@@ -7,12 +7,22 @@ import LocationSelector from '../components/ui/LocationSelector'
 import Badge from '../components/ui/Badge'
 import Avatar from '../components/ui/Avatar'
 import RatingStars from '../components/ui/RatingStars'
-import { tailorsApi, subscriptionsApi, uploadsApi } from '../lib/api'
+import { tailorsApi, subscriptionsApi, uploadsApi, authApi } from '../lib/api'
+import { useToast } from '../contexts/ToastContext'
 
-const SPECIALTY_SUGGESTIONS = [
-  "Men's Formal","Men's Kurta",'Sherwani',"Women's Suits",'Salwar Kameez',
-  'Lehenga','Blouse Stitching','Bridal Wear','Alterations','School Uniforms',
-  'Designer Wear','Embroidery',
+const SPECIALTY_OPTIONS = [
+  { label: 'Bridal Wear',      hindi: 'शादी के कपड़े' },
+  { label: 'Ladies Suits',     hindi: 'सूट-सलवार' },
+  { label: "Men's Kurta",      hindi: 'कुर्ता-पायजामा' },
+  { label: 'Sherwani',         hindi: 'शेरवानी' },
+  { label: 'Blouse Stitching', hindi: 'ब्लाउज़ सिलाई' },
+  { label: 'Lehenga',          hindi: 'लहंगा' },
+  { label: 'Alterations',      hindi: 'मरम्मत' },
+  { label: 'School Uniforms',  hindi: 'यूनिफॉर्म' },
+  { label: "Men's Formal",     hindi: 'फॉर्मल ड्रेस' },
+  { label: 'Designer Wear',    hindi: 'डिज़ाइनर' },
+  { label: 'Embroidery',       hindi: 'कढ़ाई' },
+  { label: 'Saree Blouse',     hindi: 'साड़ी-ब्लाउज़' },
 ]
 
 function loadRazorpay() {
@@ -28,6 +38,7 @@ function loadRazorpay() {
 
 // ── Small UI pieces ──────────────────────────────────────────────────────────
 
+
 function StatCard({ label, value, sub }) {
   return (
     <div className="bg-paper-0 border border-ink-200 rounded-md px-5 py-4">
@@ -39,43 +50,79 @@ function StatCard({ label, value, sub }) {
 }
 
 function SpecialtyInput({ value = [], onChange }) {
-  const [input, setInput] = useState('')
+  const [custom, setCustom] = useState('')
 
-  function add(raw) {
-    const v = raw.trim()
-    if (v && !value.includes(v)) onChange([...value, v])
-    setInput('')
+  function toggle(label) {
+    if (value.includes(label)) onChange(value.filter(v => v !== label))
+    else onChange([...value, label])
   }
 
-  function handleKeyDown(e) {
-    if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); add(input) }
-    if (e.key === 'Backspace' && !input && value.length) onChange(value.slice(0, -1))
+  function addCustom(e) {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault()
+      const v = custom.trim()
+      if (v && !value.includes(v)) onChange([...value, v])
+      setCustom('')
+    }
   }
+
+  const knownLabels = SPECIALTY_OPTIONS.map(o => o.label)
+  const customTags = value.filter(v => !knownLabels.includes(v))
 
   return (
-    <div className="flex flex-col gap-[7px]">
-      <label className="font-ui font-semibold text-[11px] uppercase tracking-wide-lg text-ink-700">
-        Specialties
-      </label>
-      <div className="border border-ink-200 rounded-sm p-2 bg-paper-0 flex flex-wrap gap-1.5 min-h-[44px] focus-within:border-ink-900 transition-colors duration-base">
-        {value.map(s => (
+    <div className="flex flex-col gap-3">
+      <div>
+        <p className="font-ui font-semibold text-[11px] uppercase tracking-wide-lg text-ink-700">
+          Specialties
+        </p>
+        <p className="font-t italic text-[13px] text-ink-400 mt-0.5">
+          Select all that apply
+        </p>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        {SPECIALTY_OPTIONS.map(({ label, hindi }) => {
+          const selected = value.includes(label)
+          return (
+            <button
+              key={label}
+              type="button"
+              onClick={() => toggle(label)}
+              className={[
+                'relative text-left px-3 py-3 rounded-sm border transition-all duration-base cursor-pointer',
+                selected ? 'bg-ink-900 border-ink-900' : 'bg-paper-0 border-ink-200 hover:border-ink-500',
+              ].join(' ')}
+            >
+              {selected && (
+                <span className="absolute top-2 right-2 w-3.5 h-3.5 rounded-full bg-paper-0 flex items-center justify-center">
+                  <span className="text-ink-900 text-[8px] font-bold leading-none">✓</span>
+                </span>
+              )}
+              <span className={['block font-t italic text-[15px] leading-tight mb-0.5', selected ? 'text-paper-50' : 'text-ink-600'].join(' ')}>
+                {hindi}
+              </span>
+              <span className={['block font-ui font-semibold text-[9px] uppercase tracking-wide-xs', selected ? 'text-ink-300' : 'text-ink-800'].join(' ')}>
+                {label}
+              </span>
+            </button>
+          )
+        })}
+      </div>
+      <div className="border border-ink-200 rounded-sm p-2 bg-paper-0 flex flex-wrap gap-1.5 min-h-[40px] focus-within:border-ink-900 transition-colors duration-base">
+        {customTags.map(s => (
           <span key={s} className="inline-flex items-center gap-1 bg-ink-900 text-paper-50 rounded-sm px-2.5 py-0.5 font-ui text-[11px]">
             {s}
             <button type="button" onClick={() => onChange(value.filter(x => x !== s))} className="opacity-60 hover:opacity-100 cursor-pointer leading-none">✕</button>
           </span>
         ))}
         <input
-          value={input}
-          onChange={e => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          onBlur={() => input && add(input)}
-          placeholder={value.length === 0 ? 'Type and press Enter…' : ''}
-          className="flex-1 min-w-[120px] font-t text-[15px] text-ink-900 bg-transparent outline-none placeholder:text-ink-400"
+          value={custom}
+          onChange={e => setCustom(e.target.value)}
+          onKeyDown={addCustom}
+          onBlur={() => { const v = custom.trim(); if (v && !value.includes(v)) { onChange([...value, v]); setCustom('') } }}
+          placeholder="Add custom specialty and press Enter…"
+          className="flex-1 min-w-[180px] font-t text-[15px] text-ink-900 bg-transparent outline-none placeholder:text-ink-400"
         />
       </div>
-      <span className="font-t italic text-[13px] text-ink-400">
-        Suggestions: {SPECIALTY_SUGGESTIONS.slice(0, 5).join(', ')}
-      </span>
     </div>
   )
 }
@@ -211,38 +258,33 @@ function ReviewRow({ review, token, onReplySaved }) {
 export default function TailorDashboardPage() {
   const { user, token, loading: authLoading } = useAuth()
   const navigate = useNavigate()
+  const toast = useToast()
 
   const [tab, setTab] = useState('overview')
-  const [profile, setProfile] = useState(undefined)  // undefined = not loaded yet
+  const [profile, setProfile] = useState(undefined)
   const [reviews, setReviews] = useState([])
   const [subscription, setSubscription] = useState(null)
   const [dataLoading, setDataLoading] = useState(true)
 
-  // Setup form (no profile yet)
-  const [setup, setSetup] = useState({ shopName: '', ownerName: '', whatsapp: '', mobile: '', email: '', state: '', district: '', city: '' })
+  // Setup form
+  const [setup, setSetup] = useState({ shopName: '', ownerName: '', whatsapp: '', mobile: '', email: '', state: '', district: '', city: '', pincode: '' })
   const [setupLoading, setSetupLoading] = useState(false)
-  const [setupError, setSetupError] = useState('')
 
   // Edit form
   const [editForm, setEditForm] = useState({})
   const [saveLoading, setSaveLoading] = useState(false)
-  const [saveError, setSaveError] = useState('')
-  const [saveSuccess, setSaveSuccess] = useState(false)
 
   // Photo uploads
   const profileInputRef  = useRef(null)
   const coverInputRef    = useRef(null)
   const galleryInputRef  = useRef(null)
-  const [photoLoading, setPhotoLoading] = useState(null) // 'profile'|'cover'|'gallery'
-  const [photoError, setPhotoError]     = useState('')
+  const [photoLoading, setPhotoLoading] = useState(null)
   const [galleryCategory, setGalleryCategory] = useState('General')
   const [galleryCaption, setGalleryCaption]   = useState('')
 
   // Subscription / Razorpay
   const [selectedPlan, setSelectedPlan] = useState('semiannual')
   const [upgradeLoading, setUpgradeLoading] = useState(false)
-  const [upgradeError, setUpgradeError] = useState('')
-  const [upgradeSuccess, setUpgradeSuccess] = useState(false)
 
   // Auth guard
   useEffect(() => {
@@ -280,15 +322,20 @@ export default function TailorDashboardPage() {
 
   async function handleSetup(e) {
     e.preventDefault()
-    setSetupError('')
     setSetupLoading(true)
     try {
+      if (!setup.pincode || setup.pincode.length !== 6) {
+        toast('Please enter a valid 6-digit pincode', 'error')
+        setSetupLoading(false)
+        return
+      }
       const body = { ...setup, ownerName: setup.ownerName || user?.fullName }
       const p = await tailorsApi.create(body, token)
       setProfile(p)
       setEditForm({ ...p })
+      toast('Shop created! It will go live once approved.')
     } catch (err) {
-      setSetupError(err.message)
+      toast(err.message, 'error')
     } finally {
       setSetupLoading(false)
     }
@@ -296,25 +343,30 @@ export default function TailorDashboardPage() {
 
   async function handleSave(e) {
     e.preventDefault()
-    setSaveError('')
-    setSaveSuccess(false)
     setSaveLoading(true)
     try {
-      const p = await tailorsApi.updateMe(editForm, token)
+      const [p] = await Promise.all([
+        tailorsApi.updateMe(editForm, token),
+        authApi.updateMe({
+          fullName: editForm.ownerName,
+          mobile:   editForm.mobile,
+          state:    editForm.state,
+          district: editForm.district,
+          city:     editForm.city,
+          pincode:  editForm.pincode,
+        }, token),
+      ])
       setProfile(p)
       setEditForm({ ...p })
-      setSaveSuccess(true)
-      setTimeout(() => setSaveSuccess(false), 3000)
+      toast('Profile saved.')
     } catch (err) {
-      setSaveError(err.message)
+      toast(err.message, 'error')
     } finally {
       setSaveLoading(false)
     }
   }
 
   async function handleUpgrade(plan) {
-    setUpgradeError('')
-    setUpgradeSuccess(false)
     setUpgradeLoading(true)
     try {
       const order = await subscriptionsApi.createOrder(plan, token)
@@ -342,16 +394,16 @@ export default function TailorDashboardPage() {
             setSubscription(s)
             setProfile(p)
             setEditForm({ ...p })
-            setUpgradeSuccess(true)
+            toast('Premium activated — thank you!')
           } catch {
-            setUpgradeError('Payment received but verification failed. Please contact support.')
+            toast('Payment received but verification failed. Please contact support.', 'error')
           }
         },
         modal: { ondismiss: () => setUpgradeLoading(false) },
       })
       rzp.open()
     } catch (err) {
-      setUpgradeError(err.message)
+      toast(err.message, 'error')
       setUpgradeLoading(false)
     }
   }
@@ -365,7 +417,6 @@ export default function TailorDashboardPage() {
   async function handleProfilePhotoUpload(e, field) {
     const file = e.target.files?.[0]
     if (!file) return
-    setPhotoError('')
     setPhotoLoading(field)
     try {
       const fd = new FormData()
@@ -373,8 +424,9 @@ export default function TailorDashboardPage() {
       const updated = await uploadsApi.tailorProfile(fd, token)
       setProfile(p => ({ ...p, ...updated }))
       setEditForm(f => ({ ...f, ...updated }))
+      toast(field === 'profileImage' ? 'Profile photo updated.' : 'Cover photo updated.')
     } catch (err) {
-      setPhotoError(err.message)
+      toast(err.message, 'error')
     } finally {
       setPhotoLoading(null)
       e.target.value = ''
@@ -384,7 +436,6 @@ export default function TailorDashboardPage() {
   async function handleGalleryAdd(e) {
     const file = e.target.files?.[0]
     if (!file) return
-    setPhotoError('')
     setPhotoLoading('gallery')
     try {
       const fd = new FormData()
@@ -392,11 +443,11 @@ export default function TailorDashboardPage() {
       fd.append('category', galleryCategory)
       if (galleryCaption.trim()) fd.append('caption', galleryCaption.trim())
       const newItem = await uploadsApi.galleryAdd(fd, token)
-      // Server returns the newly added item, so push it into existing gallery
       setProfile(p => ({ ...p, gallery: [...(p.gallery || []), newItem] }))
       setGalleryCaption('')
+      toast('Photo added to gallery.')
     } catch (err) {
-      setPhotoError(err.message)
+      toast(err.message, 'error')
     } finally {
       setPhotoLoading(null)
       e.target.value = ''
@@ -404,13 +455,12 @@ export default function TailorDashboardPage() {
   }
 
   async function handleGalleryDelete(itemId) {
-    setPhotoError('')
     try {
       await uploadsApi.galleryDelete(itemId, token)
-      // Server returns { message } — filter locally instead
       setProfile(p => ({ ...p, gallery: (p.gallery || []).filter(g => g._id !== itemId) }))
+      toast('Photo removed.')
     } catch (err) {
-      setPhotoError(err.message)
+      toast(err.message, 'error')
     }
   }
 
@@ -440,6 +490,15 @@ export default function TailorDashboardPage() {
           </div>
           <div className="bg-paper-0 border border-ink-200 rounded-md p-8">
             <form onSubmit={handleSetup} className="space-y-4">
+
+              {/* Identity */}
+              <Input
+                label="Owner name"
+                value={setup.ownerName}
+                onChange={e => setSetup(s => ({ ...s, ownerName: e.target.value }))}
+                placeholder={user?.fullName || 'e.g. Rajesh Kumar'}
+                required
+              />
               <Input
                 label="Shop name"
                 value={setup.shopName}
@@ -447,52 +506,55 @@ export default function TailorDashboardPage() {
                 placeholder="e.g. Raj Tailors"
                 required
               />
-              <Input
-                label="Your name"
-                value={setup.ownerName}
-                onChange={e => setSetup(s => ({ ...s, ownerName: e.target.value }))}
-                placeholder={user?.fullName}
-              />
-              <Input
-                label="WhatsApp number"
-                type="tel"
-                value={setup.whatsapp}
-                onChange={e => setSetup(s => ({ ...s, whatsapp: e.target.value }))}
-                placeholder="10-digit number"
-                required
-              />
-              <Input
-                label="Mobile / contact number"
-                type="tel"
-                value={setup.mobile}
-                onChange={e => setSetup(s => ({ ...s, mobile: e.target.value }))}
-                placeholder="10-digit number"
-                hint="Customers can call you on this number"
-                required
-              />
-              <Input
-                label="Email address"
-                type="email"
-                value={setup.email}
-                onChange={e => setSetup(s => ({ ...s, email: e.target.value }))}
-                placeholder="you@example.com"
-                hint="Customers can also reach you by email"
-                required
-              />
-              <div>
+
+              {/* Contact */}
+              <div className="border-t border-ink-100 pt-4 space-y-4">
+                <p className="font-ui font-semibold text-[10px] uppercase tracking-wide-lg text-ink-400">
+                  Contact details
+                </p>
+                <Input
+                  label="WhatsApp number"
+                  type="tel"
+                  value={setup.whatsapp}
+                  onChange={e => setSetup(s => ({ ...s, whatsapp: e.target.value }))}
+                  placeholder="10-digit number"
+                  hint="Customers will contact you on this number"
+                  required
+                />
+                <Input
+                  label="Mobile / contact number"
+                  type="tel"
+                  value={setup.mobile}
+                  onChange={e => setSetup(s => ({ ...s, mobile: e.target.value }))}
+                  placeholder="10-digit number"
+                  required
+                />
+                <Input
+                  label="Email address"
+                  type="email"
+                  value={setup.email}
+                  onChange={e => setSetup(s => ({ ...s, email: e.target.value }))}
+                  placeholder="you@example.com"
+                  required
+                />
+              </div>
+
+              {/* Location */}
+              <div className="border-t border-ink-100 pt-4">
                 <p className="font-ui font-semibold text-[10px] uppercase tracking-wide-lg text-ink-400 mb-3">
                   Shop location
                 </p>
                 <LocationSelector
-                  value={{ state: setup.state, district: setup.district, city: setup.city }}
-                  onChange={({ state, district, city }) => setSetup(s => ({ ...s, state, district, city }))}
+                  value={{ state: setup.state, district: setup.district, city: setup.city, pincode: setup.pincode }}
+                  onChange={({ state, district, city, pincode = '' }) => setSetup(s => ({ ...s, state, district, city, pincode }))}
                   required
+                  showPincode
                 />
                 <p className="font-t italic text-[13px] text-ink-400 mt-2">
                   Customers nearby see your shop first.
                 </p>
               </div>
-              {setupError && <p className="font-t italic text-[14px] text-ink-700">{setupError}</p>}
+
               <Button type="submit" className="w-full" size="lg" disabled={setupLoading}>
                 {setupLoading ? 'Creating shop…' : 'Create shop'}
               </Button>
@@ -647,16 +709,14 @@ export default function TailorDashboardPage() {
             </div>
           )}
 
-          <div className="cut-line" />
-
-          <div className="flex gap-3">
-            <Button size="sm" onClick={() => setTab('profile')}>Edit Profile</Button>
-            {profile.subscriptionType === 'free' && (
+          {profile.subscriptionType === 'free' && (
+            <>
+              <div className="cut-line" />
               <Button size="sm" variant="outline" onClick={() => setTab('subscription')}>
                 Upgrade to Premium
               </Button>
-            )}
-          </div>
+            </>
+          )}
         </div>
       )}
 
@@ -724,21 +784,18 @@ export default function TailorDashboardPage() {
                 state: editForm.state || '',
                 district: editForm.district || '',
                 city: editForm.city || '',
+                pincode: editForm.pincode || '',
               }}
-              onChange={({ state, district, city }) => {
+              onChange={({ state, district, city, pincode = '' }) => {
                 setField('state', state)
                 setField('district', district)
                 setField('city', city)
+                setField('pincode', pincode)
               }}
               required
+              showPincode
             />
           </div>
-
-          <Input
-            label="Pincode"
-            value={editForm.pincode || ''}
-            onChange={e => setField('pincode', e.target.value)}
-          />
 
           <div className="cut-line" />
 
@@ -790,9 +847,6 @@ export default function TailorDashboardPage() {
             onChange={v => setField('isOpenNow', v)}
           />
 
-          {saveError && <p className="font-t italic text-[14px] text-ink-700">{saveError}</p>}
-          {saveSuccess && <p className="font-t italic text-[14px] text-ink-600">Profile saved.</p>}
-
           <div className="flex gap-3 pt-1">
             <Button type="submit" disabled={saveLoading}>
               {saveLoading ? 'Saving…' : 'Save changes'}
@@ -800,7 +854,7 @@ export default function TailorDashboardPage() {
             <Button
               type="button"
               variant="ghost"
-              onClick={() => { setEditForm({ ...profile }); setSaveError(''); setSaveSuccess(false) }}
+              onClick={() => setEditForm({ ...profile })}
               disabled={saveLoading}
             >
               Reset
@@ -812,12 +866,6 @@ export default function TailorDashboardPage() {
       {/* ── Photos ── */}
       {tab === 'photos' && (
         <div className="space-y-10 max-w-2xl">
-
-          {photoError && (
-            <p className="font-t italic text-[14px] text-ink-700 border border-ink-300 rounded-sm px-4 py-3">
-              {photoError}
-            </p>
-          )}
 
           {/* Hidden camera inputs — capture="environment" forces back camera, no gallery */}
           <input ref={profileInputRef} type="file" accept="image/*" capture="environment"
@@ -1093,9 +1141,9 @@ export default function TailorDashboardPage() {
               {/* 3-plan selector */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {[
-                  { key: 'monthly',    label: 'Monthly',  price: '₹415',  per: '₹415 / mo',    save: null },
-                  { key: 'semiannual', label: '6 Months', price: '₹1,660', per: '₹277 / mo', save: 'Save 33%' },
-                  { key: 'annual',     label: 'Annual',   price: '₹2,905', per: '₹242 / mo', save: 'Best value' },
+                  { key: 'monthly',    label: 'Monthly',  price: '$5',  per: '$5 / mo',      save: null },
+                  { key: 'semiannual', label: '6 Months', price: '$20', per: '$3.33 / mo',   save: 'Save 33%' },
+                  { key: 'annual',     label: 'Annual',   price: '$35', per: '$2.92 / mo',   save: 'Best value' },
                 ].map(plan => (
                   <button
                     key={plan.key}
@@ -1148,14 +1196,6 @@ export default function TailorDashboardPage() {
                 </ul>
               </div>
 
-              {upgradeError && (
-                <p className="font-t italic text-[14px] text-ink-700">{upgradeError}</p>
-              )}
-              {upgradeSuccess && (
-                <p className="font-t italic text-[14px] text-ink-600">
-                  Premium activated — thank you!
-                </p>
-              )}
               <Button
                 onClick={() => handleUpgrade(selectedPlan)}
                 disabled={upgradeLoading}
@@ -1164,6 +1204,9 @@ export default function TailorDashboardPage() {
               >
                 {upgradeLoading ? 'Opening payment…' : 'Upgrade to Premium'}
               </Button>
+              <p className="font-t italic text-[12px] text-ink-400 text-center">
+                Payments via Razorpay · Prices in USD, charged in INR · Cancel anytime
+              </p>
             </div>
           )}
 

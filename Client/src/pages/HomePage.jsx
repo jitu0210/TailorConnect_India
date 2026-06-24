@@ -168,7 +168,7 @@ const PLANS = [
     sub: 'per month',
     per: '$5 / month',
     highlight: false,
-    badge: null,
+    badge: 'Try it out',
   },
   {
     key: 'semiannual',
@@ -321,7 +321,10 @@ export default function HomePage() {
     try {
       const params = {}
       if (keyword)  params.keyword = keyword
-      if (location) params.city    = location
+      if (location) {
+        if (/^\d{6}$/.test(location.trim())) params.pincode = location.trim()
+        else params.city = location
+      }
       const data = await tailorsApi.search(params)
       let list = data.tailors || []
       if (!location) list = sortByLocation(list, userLoc)
@@ -770,18 +773,18 @@ export default function HomePage() {
                 ].join(' ')}
               >
                 {badge && (
-                  <div className={['absolute -top-3 left-1/2 -translate-x-1/2 font-ui font-semibold text-[9px] uppercase tracking-wide-lg px-3 py-1 rounded-pill whitespace-nowrap', highlight ? 'bg-ink-900 text-paper-50' : 'bg-ink-100 text-ink-600 border border-ink-200'].join(' ')}>
+                  <div className={['absolute -top-3.5 left-1/2 -translate-x-1/2 font-ui font-bold text-[11px] uppercase tracking-wide-sm px-4 py-1.5 rounded-pill whitespace-nowrap shadow-xs', highlight ? 'bg-ink-900 text-paper-50' : 'bg-ink-800 text-paper-50'].join(' ')}>
                     {badge}
                   </div>
                 )}
 
-                <p className="font-ui font-semibold text-[10px] uppercase tracking-wide-lg text-ink-400 mb-4">{label}</p>
+                <p className="font-d text-[22px] text-ink-900 leading-tight mb-3">{label}</p>
 
                 <div className="mb-1">
                   <span className="font-d text-[56px] leading-none text-ink-900">{price}</span>
                 </div>
-                <p className="font-t italic text-[14px] text-ink-500 mb-1">{sub}</p>
-                <p className="font-ui text-[10px] uppercase tracking-wide-xs text-ink-300 mb-6">{per}</p>
+                <p className="font-t italic text-[14px] text-ink-800 mb-1">{sub}</p>
+                <p className="font-ui text-[10px] uppercase tracking-wide-xs text-ink-600 mb-6">{per}</p>
 
                 {/* Feature list */}
                 <ul className="space-y-2.5 mb-8 flex-1">

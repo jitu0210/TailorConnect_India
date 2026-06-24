@@ -958,3 +958,203 @@ export const getFlatLocations = () =>
       d.cities.map(city => ({ state: s.state, district: d.name, city }))
     )
   )
+
+// Key: "State|District|City" → 6-digit pincode (representative/head-office for each city)
+export const CITY_PINCODES = {
+  // Andhra Pradesh
+  "Andhra Pradesh|Anantapur|Anantapur": "515001",
+  "Andhra Pradesh|Chittoor|Tirupati": "517501",
+  "Andhra Pradesh|Chittoor|Chittoor": "517001",
+  "Andhra Pradesh|East Godavari|Kakinada": "533001",
+  "Andhra Pradesh|East Godavari|Rajahmundry": "533101",
+  "Andhra Pradesh|Guntur|Guntur": "522001",
+  "Andhra Pradesh|Krishna|Vijayawada": "520001",
+  "Andhra Pradesh|Krishna|Machilipatnam": "521001",
+  "Andhra Pradesh|Kurnool|Kurnool": "518001",
+  "Andhra Pradesh|Nellore|Nellore": "524001",
+  "Andhra Pradesh|Prakasam|Ongole": "523001",
+  "Andhra Pradesh|Visakhapatnam|Visakhapatnam": "530001",
+  "Andhra Pradesh|Vizianagaram|Vizianagaram": "535001",
+  "Andhra Pradesh|West Godavari|Eluru": "534001",
+  "Andhra Pradesh|West Godavari|Bhimavaram": "534201",
+  "Andhra Pradesh|YSR Kadapa|Kadapa": "516001",
+  // Assam
+  "Assam|Kamrup Metropolitan|Guwahati": "781001",
+  "Assam|Dibrugarh|Dibrugarh": "786001",
+  "Assam|Cachar|Silchar": "788001",
+  "Assam|Jorhat|Jorhat": "785001",
+  // Bihar
+  "Bihar|Patna|Patna": "800001",
+  "Bihar|Gaya|Gaya": "823001",
+  "Bihar|Bhagalpur|Bhagalpur": "812001",
+  "Bihar|Muzaffarpur|Muzaffarpur": "842001",
+  "Bihar|Darbhanga|Darbhanga": "846001",
+  // Chhattisgarh
+  "Chhattisgarh|Raipur|Raipur": "492001",
+  "Chhattisgarh|Bilaspur|Bilaspur": "495001",
+  "Chhattisgarh|Durg|Durg": "491001",
+  "Chhattisgarh|Durg|Bhilai": "490001",
+  // Delhi
+  "Delhi|Central Delhi|Delhi": "110001",
+  "Delhi|Central Delhi|New Delhi": "110001",
+  "Delhi|South Delhi|Saket": "110017",
+  "Delhi|West Delhi|Janakpuri": "110058",
+  "Delhi|East Delhi|Laxmi Nagar": "110092",
+  "Delhi|South West Delhi|Dwarka": "110075",
+  // Goa
+  "Goa|North Goa|Panaji": "403001",
+  "Goa|South Goa|Margao": "403601",
+  // Gujarat
+  "Gujarat|Ahmedabad|Ahmedabad": "380001",
+  "Gujarat|Surat|Surat": "395001",
+  "Gujarat|Vadodara|Vadodara": "390001",
+  "Gujarat|Rajkot|Rajkot": "360001",
+  "Gujarat|Bhavnagar|Bhavnagar": "364001",
+  "Gujarat|Jamnagar|Jamnagar": "361001",
+  "Gujarat|Gandhinagar|Gandhinagar": "382001",
+  "Gujarat|Anand|Anand": "388001",
+  // Haryana
+  "Haryana|Faridabad|Faridabad": "121001",
+  "Haryana|Gurugram|Gurugram": "122001",
+  "Haryana|Ambala|Ambala": "134001",
+  "Haryana|Hisar|Hisar": "125001",
+  "Haryana|Rohtak|Rohtak": "124001",
+  "Haryana|Sonipat|Sonipat": "131001",
+  "Haryana|Karnal|Karnal": "132001",
+  "Haryana|Panipat|Panipat": "132103",
+  // Himachal Pradesh
+  "Himachal Pradesh|Shimla|Shimla": "171001",
+  "Himachal Pradesh|Kangra|Dharamsala": "176215",
+  "Himachal Pradesh|Mandi|Mandi": "175001",
+  // Jammu & Kashmir
+  "Jammu & Kashmir|Srinagar|Srinagar": "190001",
+  "Jammu & Kashmir|Jammu|Jammu": "180001",
+  // Jharkhand
+  "Jharkhand|Ranchi|Ranchi": "834001",
+  "Jharkhand|East Singhbhum|Jamshedpur": "831001",
+  "Jharkhand|Dhanbad|Dhanbad": "826001",
+  "Jharkhand|Bokaro|Bokaro": "827001",
+  // Karnataka
+  "Karnataka|Bangalore Urban|Bangalore": "560001",
+  "Karnataka|Bangalore Urban|Bengaluru": "560001",
+  "Karnataka|Mysuru|Mysuru": "570001",
+  "Karnataka|Dharwad|Hubballi": "580001",
+  "Karnataka|Dakshina Kannada|Mangaluru": "575001",
+  "Karnataka|Belagavi|Belagavi": "590001",
+  "Karnataka|Davangere|Davangere": "577001",
+  "Karnataka|Tumkur|Tumkur": "572101",
+  "Karnataka|Shivamogga|Shivamogga": "577201",
+  "Karnataka|Kalaburagi|Kalaburagi": "585101",
+  // Kerala
+  "Kerala|Ernakulam|Kochi": "682001",
+  "Kerala|Thiruvananthapuram|Thiruvananthapuram": "695001",
+  "Kerala|Kozhikode|Kozhikode": "673001",
+  "Kerala|Thrissur|Thrissur": "680001",
+  "Kerala|Malappuram|Malappuram": "676501",
+  "Kerala|Kollam|Kollam": "691001",
+  "Kerala|Palakkad|Palakkad": "678001",
+  "Kerala|Kannur|Kannur": "670001",
+  // Madhya Pradesh
+  "Madhya Pradesh|Bhopal|Bhopal": "462001",
+  "Madhya Pradesh|Indore|Indore": "452001",
+  "Madhya Pradesh|Jabalpur|Jabalpur": "482001",
+  "Madhya Pradesh|Gwalior|Gwalior": "474001",
+  "Madhya Pradesh|Ujjain|Ujjain": "456001",
+  "Madhya Pradesh|Sagar|Sagar": "470001",
+  "Madhya Pradesh|Satna|Satna": "485001",
+  // Maharashtra
+  "Maharashtra|Mumbai City|Mumbai": "400001",
+  "Maharashtra|Mumbai Suburban|Mumbai": "400051",
+  "Maharashtra|Pune|Pune": "411001",
+  "Maharashtra|Nagpur|Nagpur": "440001",
+  "Maharashtra|Nashik|Nashik": "422001",
+  "Maharashtra|Thane|Thane": "400601",
+  "Maharashtra|Aurangabad|Aurangabad": "431001",
+  "Maharashtra|Solapur|Solapur": "413001",
+  "Maharashtra|Kolhapur|Kolhapur": "416001",
+  "Maharashtra|Amravati|Amravati": "444601",
+  // Manipur
+  "Manipur|Imphal West|Imphal": "795001",
+  // Meghalaya
+  "Meghalaya|East Khasi Hills|Shillong": "793001",
+  // Mizoram
+  "Mizoram|Aizawl|Aizawl": "796001",
+  // Nagaland
+  "Nagaland|Kohima|Kohima": "797001",
+  // Odisha
+  "Odisha|Khurda|Bhubaneswar": "751001",
+  "Odisha|Cuttack|Cuttack": "753001",
+  "Odisha|Ganjam|Brahmapur": "760001",
+  "Odisha|Sambalpur|Sambalpur": "768001",
+  "Odisha|Sundargarh|Rourkela": "769001",
+  // Punjab
+  "Punjab|Amritsar|Amritsar": "143001",
+  "Punjab|Ludhiana|Ludhiana": "141001",
+  "Punjab|Jalandhar|Jalandhar": "144001",
+  "Punjab|Patiala|Patiala": "147001",
+  "Punjab|Mohali|Mohali": "160055",
+  "Punjab|Bathinda|Bathinda": "151001",
+  // Chandigarh
+  "Chandigarh|Chandigarh|Chandigarh": "160001",
+  // Rajasthan
+  "Rajasthan|Jaipur|Jaipur": "302001",
+  "Rajasthan|Jodhpur|Jodhpur": "342001",
+  "Rajasthan|Kota|Kota": "324001",
+  "Rajasthan|Ajmer|Ajmer": "305001",
+  "Rajasthan|Udaipur|Udaipur": "313001",
+  "Rajasthan|Bikaner|Bikaner": "334001",
+  "Rajasthan|Alwar|Alwar": "301001",
+  "Rajasthan|Bharatpur|Bharatpur": "321001",
+  "Rajasthan|Sikar|Sikar": "332001",
+  // Sikkim
+  "Sikkim|East Sikkim|Gangtok": "737101",
+  // Tamil Nadu
+  "Tamil Nadu|Chennai|Chennai": "600001",
+  "Tamil Nadu|Coimbatore|Coimbatore": "641001",
+  "Tamil Nadu|Madurai|Madurai": "625001",
+  "Tamil Nadu|Tiruchirappalli|Tiruchirappalli": "620001",
+  "Tamil Nadu|Salem|Salem": "636001",
+  "Tamil Nadu|Tirunelveli|Tirunelveli": "627001",
+  "Tamil Nadu|Erode|Erode": "638001",
+  "Tamil Nadu|Vellore|Vellore": "632001",
+  "Tamil Nadu|Thanjavur|Thanjavur": "613001",
+  // Telangana
+  "Telangana|Hyderabad|Hyderabad": "500001",
+  "Telangana|Warangal Urban|Warangal": "506001",
+  "Telangana|Nizamabad|Nizamabad": "503001",
+  "Telangana|Karimnagar|Karimnagar": "505001",
+  // Tripura
+  "Tripura|West Tripura|Agartala": "799001",
+  // Uttar Pradesh
+  "Uttar Pradesh|Lucknow|Lucknow": "226001",
+  "Uttar Pradesh|Kanpur Nagar|Kanpur": "208001",
+  "Uttar Pradesh|Agra|Agra": "282001",
+  "Uttar Pradesh|Varanasi|Varanasi": "221001",
+  "Uttar Pradesh|Prayagraj|Allahabad": "211001",
+  "Uttar Pradesh|Meerut|Meerut": "250001",
+  "Uttar Pradesh|Ghaziabad|Ghaziabad": "201001",
+  "Uttar Pradesh|Gautam Buddha Nagar|Noida": "201301",
+  "Uttar Pradesh|Bareilly|Bareilly": "243001",
+  "Uttar Pradesh|Aligarh|Aligarh": "202001",
+  "Uttar Pradesh|Moradabad|Moradabad": "244001",
+  "Uttar Pradesh|Saharanpur|Saharanpur": "247001",
+  "Uttar Pradesh|Gorakhpur|Gorakhpur": "273001",
+  "Uttar Pradesh|Mathura|Mathura": "281001",
+  // Uttarakhand
+  "Uttarakhand|Dehradun|Dehradun": "248001",
+  "Uttarakhand|Haridwar|Haridwar": "249401",
+  "Uttarakhand|Nainital|Haldwani": "263139",
+  // West Bengal
+  "West Bengal|Kolkata|Kolkata": "700001",
+  "West Bengal|Howrah|Howrah": "711101",
+  "West Bengal|Paschim Bardhaman|Asansol": "713301",
+  "West Bengal|Darjeeling|Siliguri": "734001",
+  "West Bengal|Paschim Bardhaman|Durgapur": "713201",
+  // Ladakh
+  "Ladakh|Leh|Leh": "194101",
+  // Puducherry
+  "Puducherry|Puducherry|Puducherry": "605001",
+}
+
+export const getCityPincode = (state, district, city) =>
+  CITY_PINCODES[`${state}|${district}|${city}`] || ''

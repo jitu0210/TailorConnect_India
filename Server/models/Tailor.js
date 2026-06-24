@@ -23,7 +23,12 @@ const tailorSchema = new mongoose.Schema(
     city: { type: String, required: true, trim: true },
     district: { type: String, trim: true },
     state: { type: String, trim: true },
-    pincode: { type: String, trim: true },
+    pincode: {
+      type: String,
+      required: [true, 'Pincode is required'],
+      trim: true,
+      match: [/^\d{6}$/, 'Pincode must be a 6-digit number'],
+    },
     location: locationSchema,
     serviceRadius: { type: Number, default: 10 }, // km
 
@@ -74,6 +79,7 @@ const tailorSchema = new mongoose.Schema(
 
 tailorSchema.index({ location: '2dsphere' })
 tailorSchema.index({ city: 1, district: 1, state: 1, isActive: 1, status: 1 })
+tailorSchema.index({ pincode: 1, isActive: 1, status: 1 })
 tailorSchema.index({ specialties: 1 })
 tailorSchema.index({ subscriptionType: 1, rating: -1 })
 tailorSchema.index({ shopName: 'text', bio: 'text', specialties: 'text' })
