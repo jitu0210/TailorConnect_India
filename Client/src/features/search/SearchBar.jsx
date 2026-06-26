@@ -32,7 +32,7 @@ export default function SearchBar({ onSearch, initialKeyword = '', initialLocati
         <span className="text-ink-500 text-[13px] select-none">📍</span>
         <input
           type="text"
-          placeholder="City or pincode"
+          placeholder="City"
           value={location}
           onChange={(e) => setLocation(e.target.value)}
           className="flex-1 border-none outline-none bg-transparent font-t text-[16px] text-ink-900 placeholder:text-ink-400 py-3.5"

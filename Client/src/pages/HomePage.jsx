@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
 import SearchBar from '../components/ui/SearchBar'
 import TailorCard from '../components/ui/TailorCard'
@@ -52,7 +52,7 @@ const HOW_IT_WORKS = [
       </svg>
     ),
     title: 'Search',
-    body: 'Enter your city, pincode, or the service you need. We surface shops working nearest to you.',
+    body: 'Enter your city or the service you need. We surface shops working nearest to you.',
   },
   {
     n: '02',
@@ -298,6 +298,70 @@ function TieredCards({ tailors, userLoc }) {
   )
 }
 
+// ── Typing animation ─────────────────────────────────────────────────────────
+
+const LINE1 = '"Every city has a tailor worth knowing.'
+const LINE2 = 'We help you find yours."'
+
+function TypingQuote() {
+  const [displayed, setDisplayed] = useState('')
+  const [line, setLine] = useState(1)
+  const [done, setDone] = useState(false)
+  const ref = useRef(null)
+  const started = useRef(false)
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting && !started.current) { started.current = true; observer.disconnect(); startTyping() } },
+      { threshold: 0.4 }
+    )
+    if (ref.current) observer.observe(ref.current)
+    return () => observer.disconnect()
+  }, [])
+
+  function startTyping() {
+    const full = LINE1
+    let i = 0
+    const id = setInterval(() => {
+      i++
+      setDisplayed(full.slice(0, i))
+      if (i >= full.length) { clearInterval(id); setTimeout(() => typeLine2(), 300) }
+    }, 35)
+  }
+
+  function typeLine2() {
+    setLine(2)
+    setDisplayed('')
+    const full = LINE2
+    let i = 0
+    const id = setInterval(() => {
+      i++
+      setDisplayed(full.slice(0, i))
+      if (i >= full.length) { clearInterval(id); setDone(true) }
+    }, 40)
+  }
+
+  return (
+    <p ref={ref} className="font-d font-medium text-[clamp(26px,3.5vw,42px)] text-ink-800 leading-[1.25] tracking-tight min-h-[3em]">
+      {line === 1 ? (
+        <>
+          {displayed}
+          {!done && <span className="animate-pulse">|</span>}
+        </>
+      ) : (
+        <>
+          {LINE1}
+          <br />
+          <em>
+            {displayed}
+            {!done && <span className="animate-pulse">|</span>}
+          </em>
+        </>
+      )}
+    </p>
+  )
+}
+
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function HomePage() {
@@ -322,8 +386,7 @@ export default function HomePage() {
       const params = {}
       if (keyword)  params.keyword = keyword
       if (location) {
-        if (/^\d{6}$/.test(location.trim())) params.pincode = location.trim()
-        else params.city = location
+        params.city = location
       }
       const data = await tailorsApi.search(params)
       let list = data.tailors || []
@@ -460,6 +523,32 @@ export default function HomePage() {
         />
         <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse 80% 50% at 50% -10%, rgba(255,255,255,0.04) 0%, transparent 70%)' }} />
 
+        {/* Faded logo watermark */}
+        <style>{`
+          @keyframes logoSlide {
+            from { transform: translateX(-60%); opacity: 0; }
+            to   { transform: translateX(0);    opacity: 0.012; }
+          }
+          .hero-logo-watermark {
+            animation: logoSlide 2s cubic-bezier(0.16,1,0.3,1) 1 forwards;
+            opacity: 0;
+          }
+        `}</style>
+        <div className="absolute inset-0 pointer-events-none overflow-hidden flex items-center justify-start">
+          <img
+            src="/logo.png"
+            alt=""
+            aria-hidden="true"
+            className="hero-logo-watermark object-contain select-none"
+            style={{
+              width: '110vw',
+              maxWidth: '1100px',
+              filter: 'invert(1)',
+              marginLeft: '-10%',
+            }}
+          />
+        </div>
+
         <div className="max-w-4xl mx-auto text-center relative">
 
           <div className="inline-flex items-center gap-2.5 border border-ink-700 rounded-pill px-4 py-1.5 mb-9">
@@ -562,11 +651,7 @@ export default function HomePage() {
       {/* ── 4. CRAFT QUOTE ──────────────────────────────────────────────────── */}
       <section className="bg-paper-100 border-t border-b border-ink-200 px-6 py-16 md:py-20">
         <div className="max-w-3xl mx-auto text-center">
-          <p className="font-d font-medium text-[clamp(26px,3.5vw,42px)] text-ink-800 leading-[1.25] tracking-tight">
-            "Every city has a tailor worth knowing.
-            <br />
-            <em>We help you find yours.</em>"
-          </p>
+          <TypingQuote />
           <div className="flex items-center gap-5 justify-center mt-10">
             <div className="flex-1 max-w-[100px] cut-line-muted" />
             <span className="text-ink-400 text-lg select-none">✂</span>

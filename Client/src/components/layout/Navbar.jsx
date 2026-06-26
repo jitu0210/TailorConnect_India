@@ -108,7 +108,7 @@ export default function Navbar() {
           <img
             src="/logo.png"
             alt="TailorConnect India"
-            className="h-8 w-8 object-contain"
+            className="h-14 w-14 object-contain"
             aria-hidden="true"
           />
           <div className="flex items-baseline gap-2">

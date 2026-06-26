@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Link, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { ToastProvider } from "./contexts/ToastContext";
 import Navbar from "./components/layout/Navbar";
+import ScrollToTop from "./components/layout/ScrollToTop";
 import Footer from "./layout/Footer";
 import HomePage from "./pages/HomePage";
 import TailorPage from "./pages/TailorPage";
@@ -24,6 +25,7 @@ function PrivateRoute({ children, role }) {
 export default function App() {
   return (
     <BrowserRouter>
+      <ScrollToTop />
       <ToastProvider>
         <AuthProvider>
           <div className="min-h-screen flex flex-col">
